@@ -1,0 +1,16 @@
+{
+  "name": "pos-pro",
+  "version": "1.0.0",
+  "description": "POS Pro - Punto de venta con inventario, caja, roles y reportes",
+  "scripts": {
+    "build": "echo 'No build step - static HTML in www/' ",
+    "sync": "npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/core": "^6.1.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2"
+  }
+}
