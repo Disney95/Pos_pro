@@ -1,0 +1,9 @@
+{
+  "appId": "com.posdulceria.pospro",
+  "appName": "POS Pro",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": true
+  }
+}
