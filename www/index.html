@@ -10,6 +10,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <!-- Librería opcional para escaneo de código de barras con cámara -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <!-- Google Identity Services (para respaldo en Google Drive) -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
             --bg-primary: #f4f6f8;
@@ -24,12 +26,13 @@
         }
 
         body.dark-theme {
-            --bg-primary: #121212;
-            --bg-card: #1e1e1e;
-            --text-main: #e0e0e0;
-            --text-muted: #a0a0a0;
+            --bg-primary: #000000;
+            --bg-card: #0a0a0a;
+            --text-main: #e8e8e8;
+            --text-muted: #999999;
             --accent-color: #bb86fc;
-            --border-color: #333333;
+            --accent-secondary: #03dac6;
+            --border-color: #1c1c1c;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
@@ -48,6 +51,7 @@
         .view-section { display: none; flex: 1; overflow: auto; padding: 16px; position: relative; }
         .view-section.active { display: flex; }
 
+        /* VISTA POS / CATÁLOGO */
         #pos-view { flex-direction: column; height: 100%; position: relative; padding: 0; }
         .pos-toolbar { padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; background: var(--bg-card); border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
         .search-row { display: flex; gap: 8px; }
@@ -60,6 +64,7 @@
         .catalog-container { flex: 1; overflow-y: auto; padding: 16px; }
         .grid-products { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
 
+        /* RECUADRO DE PRODUCTO Y STOCK ABAJO A LA DERECHA */
         .product-card {
             position: relative;
             border-radius: 10px;
@@ -94,6 +99,7 @@
         .product-stock-tag.tag-low { background: var(--warning-color); color: white; }
         .product-stock-tag.tag-out { background: var(--danger-color); color: white; }
 
+        /* BOTÓN FLOTANTE DEL CARRITO DE COMPRAS */
         .floating-cart-btn {
             display: none;
             position: fixed;
@@ -128,6 +134,7 @@
             border: 2px solid white;
         }
 
+        /* MODAL / PANTALLA DE PAGO DEDICADA */
         .checkout-modal, .generic-modal, .login-overlay, .scanner-modal {
             display: none;
             position: fixed;
@@ -174,6 +181,7 @@
         .discount-global-row select, .discount-global-row input { padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-main); }
         .discount-global-row input { flex: 1; }
 
+        /* NUMERACIÓN DE TOTAL CON TAMAÑO MÁS GRANDE */
         .total-amount-large { font-size: 2.2rem; font-weight: 900; color: var(--accent-color); margin-top: 4px; }
         .change-box { background: var(--bg-primary); border-radius: 8px; padding: 10px; margin-top: 10px; }
         .change-box input { width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-main); font-size: 1rem; margin-top: 4px; }
@@ -181,6 +189,7 @@
         .change-amount.negative { color: var(--danger-color); }
         .change-amount.positive { color: var(--success-color); }
 
+        /* OTROS PANELES */
         .card-panel { background: var(--bg-card); border-radius: 8px; padding: 16px; border: 1px solid var(--border-color); width: 100%; margin-bottom: 16px; }
         .form-group { margin-bottom: 12px; }
         .form-group label { display: block; margin-bottom: 4px; font-weight: bold; font-size: 0.9rem; }
@@ -199,6 +208,7 @@
         .btn-sm { padding: 4px 8px; font-size: 0.8rem; }
 
         .locked-msg { text-align: center; color: var(--text-muted); padding: 40px 16px; }
+        .admin-only { }
         .badge-role { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 700; background: rgba(0,0,0,0.08); }
 
         .bar-row { margin-bottom: 10px; }
@@ -215,6 +225,7 @@
 
         #barcodeScannerBox { width: 100%; max-width: 400px; margin: 10px auto; }
 
+        /* TICKET IMPRESIÓN */
         #ticket-receipt { display: none; }
         @media print {
             body * { visibility: hidden; }
@@ -272,6 +283,8 @@
     <div class="generic-modal" id="openShiftModal">
         <div class="generic-modal-content">
             <div class="generic-modal-header"><h3>Abrir Turno</h3></div>
+            <div class="form-group"><label>Nombre del Dependiente</label><input type="text" id="employeeNameInput" placeholder="Nombre de quien atiende"></div>
+            <div class="form-group"><label>Número de Turno</label><input type="number" id="turnNumberInput" min="1" placeholder="1"></div>
             <p style="font-size:0.85rem; color:var(--text-muted); margin:10px 0;">Ingresa el fondo de caja inicial (efectivo con el que empiezas).</p>
             <div class="form-group"><label>Fondo Inicial</label><input type="number" step="0.01" id="openingCashInput" placeholder="0.00"></div>
             <button class="btn btn-success btn-block" onclick="confirmOpenShift()">Iniciar Turno</button>
@@ -331,6 +344,7 @@
             <div class="grid-products" id="productGrid"></div>
         </div>
 
+        <!-- BOTÓN FLOTANTE DEL CARRITO (Aparece con el 1er producto) -->
         <button class="floating-cart-btn" id="floatingCartBtn" onclick="openCheckout()">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="9" cy="21" r="1"></circle>
@@ -355,7 +369,6 @@
             <div class="form-group">
                 <select id="paymentMethod" onchange="renderCheckoutCart()">
                     <option value="Efectivo">Efectivo</option>
-                    <option value="Tarjeta">Tarjeta</option>
                     <option value="Transferencia">Transferencia</option>
                 </select>
             </div>
@@ -410,7 +423,7 @@
         <div class="card-panel admin-only" id="shiftHistoryPanel">
             <h3>Historial de Cuadres</h3>
             <table>
-                <thead><tr><th>Fecha / Hora</th><th>Ventas Totales</th><th>Diferencia</th><th>Acción</th></tr></thead>
+                <thead><tr><th>Turno</th><th>Dependiente</th><th>Fecha / Hora</th><th>Ventas Totales</th><th>Transferencias</th><th>Diferencia</th><th>Acción</th></tr></thead>
                 <tbody id="historyTable"></tbody>
             </table>
         </div>
@@ -437,18 +450,31 @@
     <div id="settings-view" class="view-section" style="flex-direction: column;">
         <div class="card-panel">
             <h3>Configuración del Comprobante</h3>
-            <div class="form-group"><label>Slogan / Subtítulo</label><input type="text" id="cfg-slogan" value="¡Gracias por su compra!"></div>
-            <div class="form-group"><label>Mensaje de Despedida</label><input type="text" id="cfg-footer" value="¡Vuelva pronto!"></div>
-            <div class="form-group"><label>URL del Logo (Opcional)</label><input type="text" id="cfg-logo" placeholder="https://dominio.com/logo.png"></div>
+            <div class="form-group"><label>Slogan / Subtítulo</label><input type="text" id="cfg-slogan" value="¡Gracias por su compra!" oninput="updateReceiptPreview()"></div>
+            <div class="form-group"><label>Mensaje de Despedida</label><input type="text" id="cfg-footer" value="¡Vuelva pronto!" oninput="updateReceiptPreview()"></div>
+            <div class="form-group"><label>URL del Logo (Opcional)</label><input type="text" id="cfg-logo" placeholder="https://dominio.com/logo.png" oninput="updateReceiptPreview()"></div>
             <button class="btn btn-primary" onclick="saveReceiptSettings()">Guardar Configuración</button>
+        </div>
+        <div class="card-panel">
+            <h3>Vista Previa del Comprobante</h3>
+            <div id="receiptPreviewBox" style="max-width:300px; margin:10px auto 0; background:#ffffff; color:#1a1a1a; font-family:monospace; font-size:12px; padding:14px; border:1px solid var(--border-color); border-radius:6px; line-height:1.5;"></div>
         </div>
         <div class="card-panel">
             <h3>Ajustes Generales</h3>
             <div class="form-group">
+                <label>Moneda</label>
+                <select id="cfg-currency" onchange="saveCurrency(this.value)">
+                    <option value="USD">Dólar estadounidense (USD $)</option>
+                    <option value="EUR">Euro (EUR €)</option>
+                    <option value="CUP">Peso Cubano (CUP)</option>
+                </select>
+            </div>
+            <div class="form-group">
                 <label>Tema de la App</label>
                 <select id="cfg-theme" onchange="toggleTheme(this.value)">
                     <option value="light">Claro</option>
-                    <option value="dark">Oscuro</option>
+                    <option value="dark">Oscuro (AMOLED)</option>
+                    <option value="system">Automático (según el sistema)</option>
                 </select>
             </div>
             <div class="form-group">
@@ -460,11 +486,27 @@
                 <input type="text" id="cfg-categories" placeholder="Bebidas, Comida, Limpieza">
             </div>
             <button class="btn btn-primary" onclick="saveCategories()">Guardar Categorías</button>
-            <div class="form-group" style="margin-top:16px;">
-                <button class="btn btn-primary" onclick="syncCloud()">Sincronizar con la Nube</button>
-                <button class="btn btn-primary" onclick="googleLogin()">Iniciar Sesión con Google</button>
+        </div>
+        <div class="card-panel">
+            <h3>Respaldo en la Nube</h3>
+            <p style="font-size:0.75rem; color:var(--text-muted);">Firebase (opcional, requiere configurar credenciales en el código):</p>
+            <div class="form-group" style="margin-top:8px;">
+                <button class="btn btn-primary" onclick="syncCloud()">Sincronizar con Firebase</button>
+                <button class="btn btn-primary" onclick="googleLogin()">Iniciar Sesión con Google (Firebase)</button>
                 <span id="auth-status" style="display:block; font-size:0.8rem; margin-top:6px; color:var(--text-muted);"></span>
             </div>
+            <p style="font-size:0.75rem; color:var(--text-muted); margin-top:16px;">Google Drive (recomendado — guarda un archivo de respaldo en tu propia cuenta de Drive):</p>
+            <div class="form-group" style="margin-top:8px;">
+                <label>Client ID de Google Cloud</label>
+                <input type="text" id="gdrive-client-id" placeholder="xxxxx.apps.googleusercontent.com">
+                <button class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="saveGDriveClientId()">Guardar Client ID</button>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
+                <button class="btn btn-primary btn-sm" onclick="gdriveConnect()">Conectar Google Drive</button>
+                <button class="btn btn-success btn-sm" onclick="gdriveBackupNow()">Respaldar Ahora</button>
+                <button class="btn btn-outline btn-sm" onclick="gdriveRestoreNow()">Restaurar Copia</button>
+            </div>
+            <span id="gdrive-status" style="display:block; font-size:0.8rem; margin-top:6px; color:var(--text-muted);">No conectado</span>
         </div>
         <div class="card-panel">
             <h3>Usuarios y Contraseñas</h3>
@@ -507,10 +549,12 @@
             appId: "TU_APP_ID"
         };
         let firebaseReady = false;
-        try {
-            firebase.initializeApp(firebaseConfig);
-            firebaseReady = true;
-        } catch (e) { console.warn("Firebase no configurado todavía:", e.message); }
+        if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY") {
+            try {
+                firebase.initializeApp(firebaseConfig);
+                firebaseReady = true;
+            } catch (e) { console.warn("Firebase no se pudo inicializar:", e.message); }
+        }
         const auth = firebaseReady ? firebase.auth() : null;
         const db = firebaseReady ? firebase.firestore() : null;
 
@@ -525,7 +569,7 @@
         let salesLog = JSON.parse(localStorage.getItem('salesLog')) || [];
         let shiftHistory = JSON.parse(localStorage.getItem('shiftHistory')) || [];
         let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
-        let currentShift = JSON.parse(localStorage.getItem('currentShift')) || null;
+        let currentShift = JSON.parse(localStorage.getItem('currentShift')) || null; // {openingCash, openDate}
         let pendingSync = JSON.parse(localStorage.getItem('pendingSync')) || [];
         let categories = JSON.parse(localStorage.getItem('categories')) || ['Bebidas', 'Comida', 'Limpieza', 'Otros'];
         let activeCategory = 'Todos';
@@ -539,9 +583,28 @@
             adminPassword: "admin123",
             cajeroPassword: "cajero123"
         };
-        let currentUser = JSON.parse(sessionStorage.getItem('currentUser')) || null;
+        let currentUser = JSON.parse(sessionStorage.getItem('currentUser')) || null; // {role}
         let selectedLoginRole = null;
         let html5QrScanner = null;
+        let currencySettings = JSON.parse(localStorage.getItem('currencySettings')) || { code: 'USD' };
+        let systemThemeListenerAdded = false;
+        let gdriveClientId = localStorage.getItem('gdriveClientId') || '';
+        let gdriveTokenClient = null;
+        let gdriveAccessToken = null;
+
+        // ============ MONEDA ============
+        function formatMoney(amount) {
+            const n = Number(amount || 0).toFixed(2);
+            if (currencySettings.code === 'EUR') return `${n}€`;
+            if (currencySettings.code === 'CUP') return `${n} CUP`;
+            return `$${n}`;
+        }
+        function saveCurrency(code) {
+            currencySettings.code = code;
+            localStorage.setItem('currencySettings', JSON.stringify(currencySettings));
+            renderAll();
+            updateReceiptPreview();
+        }
 
         // ============ LOGIN / ROLES ============
         function selectRole(role) {
@@ -690,7 +753,7 @@
                         <div>
                             <div class="product-category-label">${p.category || ''}</div>
                             <div class="product-title">${p.name}</div>
-                            <div class="product-price">$${p.price.toFixed(2)}</div>
+                            <div class="product-price">${formatMoney(p.price)}</div>
                         </div>
                         <div class="product-stock-tag ${tagClass}">Disp: ${availableStock}</div>
                     </div>
@@ -826,7 +889,7 @@
                             <div class="cart-item-top">
                                 <div>
                                     <b style="font-size: 1rem;">${i.name}</b>
-                                    <div style="font-size: 0.85rem; color: var(--text-muted);">Precio: $${i.price.toFixed(2)} · Total: $${r.net.toFixed(2)}</div>
+                                    <div style="font-size: 0.85rem; color: var(--text-muted);">Precio: ${formatMoney(i.price)} · Total: ${formatMoney(r.net)}</div>
                                 </div>
                                 <div class="qty-controls">
                                     <button class="btn-qty" onclick="changeCartQty(${i.id}, -1)">-</button>
@@ -850,9 +913,9 @@
             }
 
             const totals = computeCartTotals();
-            document.getElementById('cartSubtotal').innerText = `$${totals.subtotal.toFixed(2)}`;
-            document.getElementById('cartDiscountAmount').innerText = `-$${totals.totalDiscount.toFixed(2)}`;
-            document.getElementById('cartTotalLarge').innerText = `$${totals.total.toFixed(2)}`;
+            document.getElementById('cartSubtotal').innerText = formatMoney(totals.subtotal);
+            document.getElementById('cartDiscountAmount').innerText = `-${formatMoney(totals.totalDiscount)}`;
+            document.getElementById('cartTotalLarge').innerText = formatMoney(totals.total);
             updateChange();
         }
 
@@ -861,7 +924,7 @@
             const received = parseFloat(document.getElementById('cashReceivedInput').value) || 0;
             const change = received - totals.total;
             const el = document.getElementById('changeAmount');
-            el.innerText = `Cambio: $${Math.max(0, change).toFixed(2)}`;
+            el.innerText = `Cambio: ${formatMoney(Math.max(0, change))}`;
             el.className = 'change-amount ' + (change < 0 ? 'negative' : 'positive');
         }
 
@@ -883,7 +946,7 @@
 
             cart.forEach(item => {
                 const prod = products.find(p => p.id === item.id);
-                if (prod) prod.stock -= item.qty;
+                if (prod) prod.stock -= item.qty; // Descuento definitivo del stock
             });
 
             const saleRecord = {
@@ -920,21 +983,50 @@
             document.getElementById('rec-date').innerText = saleRecord.date;
             document.getElementById('rec-client').innerText = saleRecord.client;
             document.getElementById('rec-method').innerText = saleRecord.method;
-            document.getElementById('rec-subtotal').innerText = `$${saleRecord.subtotal.toFixed(2)}`;
-            document.getElementById('rec-discount').innerText = `-$${saleRecord.discount.toFixed(2)}`;
-            document.getElementById('rec-total').innerText = `$${saleRecord.total.toFixed(2)}`;
+            document.getElementById('rec-subtotal').innerText = formatMoney(saleRecord.subtotal);
+            document.getElementById('rec-discount').innerText = `-${formatMoney(saleRecord.discount)}`;
+            document.getElementById('rec-total').innerText = formatMoney(saleRecord.total);
             document.getElementById('rec-change-line').innerText = saleRecord.method === 'Efectivo'
-                ? `Recibido: $${saleRecord.cashReceived.toFixed(2)} · Cambio: $${saleRecord.change.toFixed(2)}` : '';
+                ? `Recibido: ${formatMoney(saleRecord.cashReceived)} · Cambio: ${formatMoney(saleRecord.change)}` : '';
 
             const logoImg = document.getElementById('rec-logo');
             if (receiptSettings.logo) { logoImg.src = receiptSettings.logo; logoImg.style.display = 'block'; }
             else { logoImg.style.display = 'none'; }
 
             document.getElementById('rec-items').innerHTML = saleRecord.items.map(i =>
-                `<div style="display:flex; justify-content:space-between;"><span>${i.name} x${i.qty}</span><span>$${(i.price * i.qty).toFixed(2)}</span></div>`
+                `<div style="display:flex; justify-content:space-between;"><span>${i.name} x${i.qty}</span><span>${formatMoney(i.price * i.qty)}</span></div>`
             ).join('');
 
             window.print();
+        }
+
+        // ============ VISTA PREVIA DEL COMPROBANTE ============
+        function updateReceiptPreview() {
+            const box = document.getElementById('receiptPreviewBox');
+            if (!box) return;
+            const slogan = document.getElementById('cfg-slogan').value;
+            const footer = document.getElementById('cfg-footer').value;
+            const logo = document.getElementById('cfg-logo').value;
+            box.innerHTML = `
+                <div style="text-align:center; margin-bottom:8px;">
+                    ${logo ? `<img src="${logo}" style="max-width:50px; max-height:50px; display:block; margin:0 auto 4px auto;">` : ''}
+                    <b>POS Store</b>
+                    <div>${slogan}</div>
+                </div>
+                <div style="border-bottom:1px dashed #999; margin:6px 0;"></div>
+                <div>Fecha: ${new Date().toLocaleString()}</div>
+                <div>Cliente: Cliente General</div>
+                <div>Pago: Efectivo</div>
+                <div style="border-bottom:1px dashed #999; margin:6px 0;"></div>
+                <div style="display:flex; justify-content:space-between;"><span>Producto x1</span><span>${formatMoney(2.5)}</span></div>
+                <div style="display:flex; justify-content:space-between;"><span>Producto x2</span><span>${formatMoney(5)}</span></div>
+                <div style="border-bottom:1px dashed #999; margin:6px 0;"></div>
+                <div style="text-align:right;">Subtotal: ${formatMoney(7.5)}</div>
+                <div style="text-align:right;">Descuento: -${formatMoney(0)}</div>
+                <div style="text-align:right;"><b>TOTAL: ${formatMoney(7.5)}</b></div>
+                <div style="border-bottom:1px dashed #999; margin:6px 0;"></div>
+                <div style="text-align:center;">${footer}</div>
+            `;
         }
 
         // ============ INVENTARIO (SOLO ADMIN) ============
@@ -1003,7 +1095,7 @@
                     <td style="background:${p.color}; width:30px;"></td>
                     <td>${p.name}</td>
                     <td>${p.category || ''}</td>
-                    <td>$${p.price.toFixed(2)}</td>
+                    <td>${formatMoney(p.price)}</td>
                     <td>${p.stock}</td>
                     <td>${p.barcode || '-'}</td>
                     <td>
@@ -1046,17 +1138,20 @@
                 `;
             } else {
                 const cashSales = salesLog.filter(s => s.method === 'Efectivo').reduce((a, s) => a + s.total, 0);
+                const transferSales = salesLog.filter(s => s.method === 'Transferencia').reduce((a, s) => a + s.total, 0);
                 const totalExpenses = expenses.reduce((a, e) => a + e.amount, 0);
                 const totalSales = salesLog.reduce((a, s) => a + s.total, 0);
                 const expected = currentShift.openingCash + cashSales - totalExpenses;
                 panel.innerHTML = `
-                    <h3>Turno Abierto — ${new Date(currentShift.openDate).toLocaleString()}</h3>
+                    <h3>Turno ${currentShift.turnNumber || '-'} — ${currentShift.employeeName || 'Sin nombre'}</h3>
+                    <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;">Abierto: ${new Date(currentShift.openDate).toLocaleString()}</p>
                     <div class="summary-grid">
-                        <div class="summary-item"><div class="label">Fondo Inicial</div><div class="value">$${currentShift.openingCash.toFixed(2)}</div></div>
-                        <div class="summary-item"><div class="label">Ventas Totales</div><div class="value">$${totalSales.toFixed(2)}</div></div>
-                        <div class="summary-item"><div class="label">Ventas en Efectivo</div><div class="value">$${cashSales.toFixed(2)}</div></div>
-                        <div class="summary-item"><div class="label">Gastos/Retiros</div><div class="value">-$${totalExpenses.toFixed(2)}</div></div>
-                        <div class="summary-item"><div class="label">Efectivo Esperado</div><div class="value">$${expected.toFixed(2)}</div></div>
+                        <div class="summary-item"><div class="label">Fondo Inicial</div><div class="value">${formatMoney(currentShift.openingCash)}</div></div>
+                        <div class="summary-item"><div class="label">Ventas Totales</div><div class="value">${formatMoney(totalSales)}</div></div>
+                        <div class="summary-item"><div class="label">Ventas en Efectivo</div><div class="value">${formatMoney(cashSales)}</div></div>
+                        <div class="summary-item"><div class="label">Ventas por Transferencia</div><div class="value">${formatMoney(transferSales)}</div></div>
+                        <div class="summary-item"><div class="label">Gastos/Retiros</div><div class="value">-${formatMoney(totalExpenses)}</div></div>
+                        <div class="summary-item"><div class="label">Efectivo Esperado</div><div class="value">${formatMoney(expected)}</div></div>
                     </div>
                     <button class="btn btn-primary btn-block" onclick="openCloseShiftModal()">Cerrar Turno / Realizar Cuadre</button>
                 `;
@@ -1069,9 +1164,12 @@
                 const table = document.getElementById('historyTable');
                 table.innerHTML = shiftHistory.map((s, idx) => `
                     <tr>
+                        <td>${s.turnNumber || '-'}</td>
+                        <td>${s.employeeName || '-'}</td>
                         <td>${s.date}</td>
-                        <td>$${s.totalSales.toFixed(2)}</td>
-                        <td class="${s.difference < 0 ? 'diff-negative' : 'diff-positive'}">${s.difference >= 0 ? '+' : ''}$${s.difference.toFixed(2)}</td>
+                        <td>${formatMoney(s.totalSales)}</td>
+                        <td>${formatMoney(s.transferSales || 0)}</td>
+                        <td class="${s.difference < 0 ? 'diff-negative' : 'diff-positive'}">${s.difference >= 0 ? '+' : ''}${formatMoney(s.difference)}</td>
                         <td><button class="btn btn-danger btn-sm" onclick="deleteShiftRecord(${idx})">Eliminar</button></td>
                     </tr>
                 `).join('');
@@ -1080,12 +1178,17 @@
 
         function openOpenShiftModal() {
             document.getElementById('openingCashInput').value = '';
+            document.getElementById('employeeNameInput').value = '';
+            document.getElementById('turnNumberInput').value = shiftHistory.length + 1;
             document.getElementById('openShiftModal').classList.add('active');
         }
         function confirmOpenShift() {
             const val = parseFloat(document.getElementById('openingCashInput').value);
+            const employeeName = document.getElementById('employeeNameInput').value.trim();
+            const turnNumber = parseInt(document.getElementById('turnNumberInput').value) || (shiftHistory.length + 1);
             if (isNaN(val) || val < 0) return alert("Ingresa un monto válido");
-            currentShift = { openingCash: val, openDate: new Date().toISOString() };
+            if (!employeeName) return alert("Ingresa el nombre del dependiente");
+            currentShift = { openingCash: val, openDate: new Date().toISOString(), employeeName, turnNumber };
             salesLog = [];
             expenses = [];
             saveData();
@@ -1129,13 +1232,16 @@
 
         function openCloseShiftModal() {
             const cashSales = salesLog.filter(s => s.method === 'Efectivo').reduce((a, s) => a + s.total, 0);
+            const transferSales = salesLog.filter(s => s.method === 'Transferencia').reduce((a, s) => a + s.total, 0);
             const totalExpenses = expenses.reduce((a, e) => a + e.amount, 0);
             const totalSales = salesLog.reduce((a, s) => a + s.total, 0);
             const expected = currentShift.openingCash + cashSales - totalExpenses;
             document.getElementById('closeShiftSummary').innerHTML = `
-                <div class="summary-item"><div class="label">Fondo Inicial</div><div class="value">$${currentShift.openingCash.toFixed(2)}</div></div>
-                <div class="summary-item"><div class="label">Ventas Totales</div><div class="value">$${totalSales.toFixed(2)}</div></div>
-                <div class="summary-item"><div class="label">Efectivo Esperado</div><div class="value">$${expected.toFixed(2)}</div></div>
+                <div class="summary-item"><div class="label">Turno</div><div class="value">${currentShift.turnNumber} — ${currentShift.employeeName}</div></div>
+                <div class="summary-item"><div class="label">Fondo Inicial</div><div class="value">${formatMoney(currentShift.openingCash)}</div></div>
+                <div class="summary-item"><div class="label">Ventas Totales</div><div class="value">${formatMoney(totalSales)}</div></div>
+                <div class="summary-item"><div class="label">Ventas por Transferencia</div><div class="value">${formatMoney(transferSales)}</div></div>
+                <div class="summary-item"><div class="label">Efectivo Esperado</div><div class="value">${formatMoney(expected)}</div></div>
             `;
             document.getElementById('countedCashInput').value = '';
             document.getElementById('shiftDifference').innerText = '$0.00';
@@ -1155,10 +1261,14 @@
             const counted = parseFloat(document.getElementById('countedCashInput').value);
             if (isNaN(counted)) return alert("Ingresa el efectivo contado");
             const totalSales = salesLog.reduce((a, s) => a + s.total, 0);
+            const transferSales = salesLog.filter(s => s.method === 'Transferencia').reduce((a, s) => a + s.total, 0);
             shiftHistory.push({
                 id: Date.now(),
                 date: new Date().toLocaleString(),
+                turnNumber: currentShift.turnNumber,
+                employeeName: currentShift.employeeName,
                 totalSales,
+                transferSales,
                 expected,
                 counted,
                 difference: counted - expected,
@@ -1201,7 +1311,7 @@
             const maxQty = Math.max(...arr.map(a => a.qty));
             box.innerHTML = arr.map(a => `
                 <div class="bar-row">
-                    <div class="bar-label"><span>${a.name}</span><span>${a.qty} uds · $${a.revenue.toFixed(2)}</span></div>
+                    <div class="bar-label"><span>${a.name}</span><span>${a.qty} uds · ${formatMoney(a.revenue)}</span></div>
                     <div class="bar-track"><div class="bar-fill" style="width:${(a.qty / maxQty * 100).toFixed(0)}%;"></div></div>
                 </div>
             `).join('');
@@ -1240,10 +1350,22 @@
             alert("Ajustes del comprobante guardados");
         }
 
+        function applyEffectiveTheme(theme) {
+            let effective = theme;
+            if (theme === 'system') {
+                effective = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+            document.body.classList.toggle('dark-theme', effective === 'dark');
+        }
         function toggleTheme(theme) {
-            if (theme === 'dark') document.body.classList.add('dark-theme');
-            else document.body.classList.remove('dark-theme');
             localStorage.setItem('themePref', theme);
+            applyEffectiveTheme(theme);
+            if (theme === 'system' && !systemThemeListenerAdded && window.matchMedia) {
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+                    if (localStorage.getItem('themePref') === 'system') applyEffectiveTheme('system');
+                });
+                systemThemeListenerAdded = true;
+            }
         }
 
         function saveLowStockThreshold(val) {
@@ -1273,7 +1395,7 @@
         }
 
         function googleLogin() {
-            if (!firebaseReady) return alert("Firebase no está configurado. Agrega tus credenciales en el código.");
+            if (!firebaseReady) return alert("Firebase no está configurado todavía. Agrega tus credenciales reales en el código (reemplaza TU_API_KEY, etc.), o usa el respaldo por Google Drive de más abajo.");
             const provider = new firebase.auth.GoogleAuthProvider();
             auth.signInWithPopup(provider).then(res => {
                 document.getElementById('auth-status').innerText = `Conectado como ${res.user.displayName}`;
@@ -1281,7 +1403,7 @@
         }
 
         function syncCloud() {
-            if (!firebaseReady) return alert("Firebase no está configurado. Agrega tus credenciales en el código.");
+            if (!firebaseReady) return alert("Firebase no está configurado todavía. Agrega tus credenciales reales en el código (reemplaza TU_API_KEY, etc.), o usa el respaldo por Google Drive de más abajo.");
             const user = auth.currentUser;
             if (!user) return alert("Inicie sesión con Google primero");
             db.collection("users").doc(user.uid).set({
@@ -1297,6 +1419,100 @@
         function trySyncPending() {
             if (!navigator.onLine || pendingSync.length === 0 || !firebaseReady || !auth.currentUser) return;
             syncCloud();
+        }
+
+        // ============ RESPALDO EN GOOGLE DRIVE ============
+        function saveGDriveClientId() {
+            gdriveClientId = document.getElementById('gdrive-client-id').value.trim();
+            localStorage.setItem('gdriveClientId', gdriveClientId);
+            alert("Client ID guardado");
+        }
+
+        function gdriveConnect() {
+            if (!gdriveClientId) return alert("Primero ingresa y guarda tu Client ID de Google Cloud");
+            if (typeof google === 'undefined' || !google.accounts) return alert("No se pudo cargar el servicio de Google. Verifica tu conexión a internet e inténtalo de nuevo.");
+            gdriveTokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: gdriveClientId,
+                scope: 'https://www.googleapis.com/auth/drive.file',
+                callback: (resp) => {
+                    if (resp.error) { return alert("Error de autorización: " + resp.error); }
+                    gdriveAccessToken = resp.access_token;
+                    document.getElementById('gdrive-status').innerText = 'Conectado a Google Drive ✓';
+                }
+            });
+            gdriveTokenClient.requestAccessToken();
+        }
+
+        async function gdriveFindBackupFileId() {
+            const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=name%3D%27pos-pro-backup.json%27+and+trashed%3Dfalse&spaces=drive&fields=files(id,name)`, {
+                headers: { Authorization: `Bearer ${gdriveAccessToken}` }
+            });
+            const data = await res.json();
+            return (data.files && data.files.length > 0) ? data.files[0].id : null;
+        }
+
+        async function gdriveBackupNow() {
+            if (!gdriveAccessToken) return alert("Primero conecta con Google Drive");
+            const backupData = {
+                products, shiftHistory, salesLog, expenses, receiptSettings,
+                categories, currencySettings, authConfig, lowStockThreshold,
+                exportedAt: new Date().toISOString()
+            };
+            const fileContent = JSON.stringify(backupData);
+            try {
+                const existingId = await gdriveFindBackupFileId();
+                const metadata = { name: 'pos-pro-backup.json', mimeType: 'application/json' };
+                const boundary = 'pospro_backup_boundary';
+                const body =
+                    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
+                    `--${boundary}\r\nContent-Type: application/json\r\n\r\n${fileContent}\r\n--${boundary}--`;
+                const url = existingId
+                    ? `https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=multipart`
+                    : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`;
+                const method = existingId ? 'PATCH' : 'POST';
+                const res = await fetch(url, {
+                    method,
+                    headers: { Authorization: `Bearer ${gdriveAccessToken}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
+                    body
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                alert("Copia de seguridad guardada en Google Drive");
+            } catch (err) {
+                alert("Error al respaldar: " + err.message);
+            }
+        }
+
+        async function gdriveRestoreNow() {
+            if (!gdriveAccessToken) return alert("Primero conecta con Google Drive");
+            showConfirm("Esto reemplazará los datos actuales con los de la copia de seguridad. ¿Continuar?", async () => {
+                try {
+                    const fileId = await gdriveFindBackupFileId();
+                    if (!fileId) return alert("No se encontró ninguna copia de seguridad en Drive");
+                    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+                        headers: { Authorization: `Bearer ${gdriveAccessToken}` }
+                    });
+                    const data = await res.json();
+                    products = data.products || products;
+                    shiftHistory = data.shiftHistory || shiftHistory;
+                    salesLog = data.salesLog || salesLog;
+                    expenses = data.expenses || expenses;
+                    receiptSettings = data.receiptSettings || receiptSettings;
+                    categories = data.categories || categories;
+                    currencySettings = data.currencySettings || currencySettings;
+                    authConfig = data.authConfig || authConfig;
+                    lowStockThreshold = data.lowStockThreshold || lowStockThreshold;
+                    localStorage.setItem('categories', JSON.stringify(categories));
+                    localStorage.setItem('currencySettings', JSON.stringify(currencySettings));
+                    localStorage.setItem('authConfig', JSON.stringify(authConfig));
+                    localStorage.setItem('lowStockThreshold', lowStockThreshold);
+                    saveData();
+                    renderAll();
+                    updateReceiptPreview();
+                    alert("Datos restaurados desde Google Drive");
+                } catch (err) {
+                    alert("Error al restaurar: " + err.message);
+                }
+            });
         }
 
         function updateOfflineBanner() {
@@ -1334,13 +1550,17 @@
 
         // ============ INICIO ============
         (function init() {
-            const savedTheme = localStorage.getItem('themePref');
-            if (savedTheme === 'dark') { document.getElementById('cfg-theme').value = 'dark'; toggleTheme('dark'); }
+            const savedTheme = localStorage.getItem('themePref') || 'light';
+            document.getElementById('cfg-theme').value = savedTheme;
+            toggleTheme(savedTheme);
+            document.getElementById('cfg-currency').value = currencySettings.code;
             document.getElementById('cfg-lowstock').value = lowStockThreshold;
             document.getElementById('cfg-categories').value = categories.join(', ');
             document.getElementById('cfg-slogan').value = receiptSettings.slogan;
             document.getElementById('cfg-footer').value = receiptSettings.footer;
             document.getElementById('cfg-logo').value = receiptSettings.logo;
+            document.getElementById('gdrive-client-id').value = gdriveClientId;
+            updateReceiptPreview();
 
             if (currentUser) {
                 document.getElementById('loginOverlay').classList.remove('active');
@@ -1350,4 +1570,4 @@
         })();
     </script>
 </body>
-                                                                                  </html>
+</html>
