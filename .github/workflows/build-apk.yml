@@ -32,6 +32,9 @@ jobs:
             npx cap add android
           fi
 
+      - name: Generar íconos de la app a partir de resources/
+        run: npx @capacitor/assets generate --android
+
       - name: Sincronizar proyecto web con Android
         run: npx cap sync android
 
