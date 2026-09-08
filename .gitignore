@@ -1,0 +1,12 @@
+# Capacitor / Android build (si reconstruyes el proyecto nativo)
+android/
+ios/
+node_modules/
+www/
+
+# Configuración local con credenciales reales
+firebase-config.local.js
+.env
+
+# Sistema
+.DS_Store
