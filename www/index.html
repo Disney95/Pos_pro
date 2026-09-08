@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>POS Pro - Punto de Venta</title>
     <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <!-- Librería opcional para escaneo de código de barras con cámara -->
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script defer src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         :root {
             --bg-primary: #f4f6f8;
@@ -165,7 +165,7 @@
 
         .login-card { background: var(--bg-card); border-radius: 16px; padding: 28px 24px; width: 90%; max-width: 340px; box-shadow: 0 8px 30px rgba(0,0,0,0.3); text-align: center; }
         .role-select-row { display: flex; gap: 10px; margin: 16px 0; }
-        .role-btn { flex: 1; padding: 14px 8px; border-radius: 10px; border: 2px solid var(--border-color); background: var(--bg-primary); color: var(--text-main); font-weight: bold; cursor: pointer; }
+        .role-btn { flex: 1; padding: 14px 8px; border-radius: 10px; border: 2px solid var(--border-color); background: var(--bg-primary); color: var(--text-main); font-weight: bold; cursor: pointer; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
         .role-btn.selected { border-color: var(--accent-color); background: var(--accent-color); color: white; }
 
         .checkout-header, .generic-modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; }
@@ -204,7 +204,7 @@
         th, td { border: 1px solid var(--border-color); padding: 8px; text-align: left; font-size: 0.85rem; }
         th { background: rgba(0,0,0,0.05); }
 
-        .btn { padding: 10px 16px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn { padding: 10px 16px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
         .btn-primary { background: var(--accent-color); color: white; }
         .btn-danger { background: var(--danger-color); color: white; }
         .btn-success { background: var(--success-color); color: white; }
@@ -271,13 +271,13 @@
             <h2>POS Professional</h2>
             <p style="color:var(--text-muted); font-size:0.85rem; margin-top:6px;">Selecciona tu rol para continuar</p>
             <div class="role-select-row">
-                <button class="role-btn" id="roleBtnAdmin" onclick="selectRole('admin')">Administrador</button>
-                <button class="role-btn" id="roleBtnCajero" onclick="selectRole('cajero')">Cajero</button>
+                <button type="button" class="role-btn" id="roleBtnAdmin" onclick="selectRole('admin')">Administrador</button>
+                <button type="button" class="role-btn" id="roleBtnCajero" onclick="selectRole('cajero')">Cajero</button>
             </div>
             <div class="form-group">
                 <input type="password" id="loginPassword" placeholder="Contraseña">
             </div>
-            <button class="btn btn-primary btn-block" onclick="doLogin()">Entrar</button>
+            <button type="button" class="btn btn-primary btn-block" onclick="doLogin()">Entrar</button>
             <p style="font-size:0.7rem; color:var(--text-muted); margin-top:10px;">Predeterminadas: admin123 / cajero123 (cámbialas en Ajustes)</p>
         </div>
     </div>
@@ -724,6 +724,10 @@
             document.getElementById('roleBtnAdmin').classList.toggle('selected', role === 'admin');
             document.getElementById('roleBtnCajero').classList.toggle('selected', role === 'cajero');
         }
+        // Refuerzo: por si algún WebView de Android no dispara bien el "click"
+        // sobre el onclick inline, escuchamos también el toque directamente.
+        document.getElementById('roleBtnAdmin').addEventListener('touchend', (e) => { e.preventDefault(); selectRole('admin'); });
+        document.getElementById('roleBtnCajero').addEventListener('touchend', (e) => { e.preventDefault(); selectRole('cajero'); });
 
         function doLogin() {
             if (!selectedLoginRole) return alert("Selecciona un rol primero");
@@ -1811,14 +1815,4 @@
             const savedTheme = localStorage.getItem('themePref') || 'light';
             document.getElementById('cfg-theme').value = savedTheme;
             toggleTheme(savedTheme);
-            document.getElementById('cfg-currency').value = currencySettings.code;
-            document.getElementById('cfg-lowstock').value = lowStockThreshold;
-            document.getElementById('cfg-turnmode').value = turnNumberMode;
-            document.getElementById('cfg-categories').value = categories.join(', ');
-            document.getElementById('cfg-slogan').value = receiptSettings.slogan;
-            document.getElementById('cfg-footer').value = receiptSettings.footer;
-            document.getElementById('cfg-logo').value = receiptSettings.logo;
-            updateReceiptPreview();
-
-            if (currentUser) {
-                document.getElementById('loginOverlay').classLis
+   
