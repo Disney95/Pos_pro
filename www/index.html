@@ -25,12 +25,17 @@
 
         body.dark-theme {
             --bg-primary: #000000;
-            --bg-card: #0a0a0a;
+            --bg-card: #000000;
             --text-main: #e8e8e8;
             --text-muted: #999999;
-            --accent-color: #5f6368;
-            --accent-secondary: #8a8d91;
+            --accent-color: #25D366;
+            --accent-secondary: #128C7E;
             --border-color: #1c1c1c;
+        }
+        body.dark-theme header,
+        body.dark-theme nav,
+        body.dark-theme .pos-toolbar {
+            background: #000000;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
@@ -80,9 +85,9 @@
         .product-card:active { transform: scale(0.96); }
         .product-card.stock-low { border-color: var(--warning-color); box-shadow: 0 0 0 2px rgba(245,124,0,0.35); }
         .product-card.stock-out { border-color: var(--danger-color); opacity: 0.55; cursor: not-allowed; }
-        .product-title { font-weight: bold; font-size: 0.95rem; line-height: 1.2; }
-        .product-category-label { font-size: 0.65rem; text-transform: uppercase; color: rgba(0,0,0,0.5); font-weight: 700; margin-bottom: 2px; }
-        .product-price { color: #1b5e20; font-weight: bold; font-size: 0.9rem; margin-top: 4px; }
+        .product-title { font-weight: bold; font-size: 0.95rem; line-height: 1.2; color: #1a1a1a; }
+        .product-category-label { font-size: 0.65rem; text-transform: uppercase; color: rgba(0,0,0,0.55); font-weight: 700; margin-bottom: 2px; }
+        .product-price { color: #1a1a1a; font-weight: bold; font-size: 0.9rem; margin-top: 4px; }
         .product-stock-tag {
             position: absolute;
             bottom: 6px;
@@ -208,6 +213,15 @@
         .locked-msg { text-align: center; color: var(--text-muted); padding: 40px 16px; }
         .admin-only { }
         .badge-role { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 700; background: rgba(0,0,0,0.08); }
+        .color-swatch-picker { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+        .color-swatch { width: 34px; height: 34px; border-radius: 8px; border: 2px solid var(--border-color); cursor: pointer; }
+        .color-swatch.selected { border-color: var(--accent-color); box-shadow: 0 0 0 2px var(--accent-color); }
+        .back-toast {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.85); color: white; padding: 10px 20px; border-radius: 20px;
+            font-size: 0.85rem; z-index: 999; opacity: 0; transition: opacity 0.2s; pointer-events: none;
+        }
+        .back-toast.show { opacity: 1; }
 
         .bar-row { margin-bottom: 10px; }
         .bar-label { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 3px; }
@@ -314,7 +328,7 @@
     </div>
 
     <header>
-        <h2>POS Professional</h2>
+        <h2>POS Professional <span style="font-size:0.6rem; font-weight:400; opacity:0.75; vertical-align:middle;">v1.1.0</span></h2>
         <div style="display:flex; align-items:center; gap:8px;">
             <div class="user-chip" id="userChip">—</div>
             <button class="btn btn-outline btn-sm" style="background:rgba(255,255,255,0.15); color:white; border-color:rgba(255,255,255,0.4);" onclick="logout()">Salir</button>
@@ -514,6 +528,9 @@
             <button class="btn btn-primary" onclick="savePasswords()">Actualizar Contraseñas</button>
         </div>
     </div>
+
+    <!-- AVISO DE "TOCA DE NUEVO PARA SALIR" -->
+    <div class="back-toast" id="backToast">Toca de nuevo para salir</div>
 
     <!-- FORMATO TICKET -->
     <div id="ticket-receipt">
@@ -1026,6 +1043,40 @@
         }
 
         // ============ INVENTARIO (SOLO ADMIN) ============
+        // ============ SELECTOR DE COLOR PERSONALIZADO ============
+        const SOFT_COLOR_PALETTE = [
+            '#F5B7B1', '#F8C471', '#F9E79F', '#A9DFBF',
+            '#A3E4D7', '#AED6F1', '#D2B4DE', '#F5CBA7',
+            '#E6B0AA', '#ABEBC6', '#85C1E9', '#D7BDE2'
+        ];
+        function renderColorSwatches(selectedColor) {
+            const box = document.getElementById('colorSwatchPicker');
+            if (!box) return;
+            box.innerHTML = SOFT_COLOR_PALETTE.map(c => `
+                <div class="color-swatch ${c.toLowerCase() === (selectedColor || '').toLowerCase() ? 'selected' : ''}"
+                     style="background:${c};" onclick="selectColorSwatch('${c}')"></div>
+            `).join('');
+        }
+        function selectColorSwatch(color) {
+            document.getElementById('prod-color').value = color;
+            renderColorSwatches(color);
+        }
+        function pickRandomColor() {
+            const hue = Math.floor(Math.random() * 360);
+            const sat = 55 + Math.random() * 15;
+            const light = 74 + Math.random() * 8;
+            const color = hslToHex(hue, sat, light);
+            selectColorSwatch(color);
+        }
+        function hslToHex(h, s, l) {
+            s /= 100; l /= 100;
+            const k = n => (n + h / 30) % 12;
+            const a = s * Math.min(l, 1 - l);
+            const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+            const toHex = x => Math.round(255 * x).toString(16).padStart(2, '0');
+            return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
+        }
+
         function renderInventoryView() {
             const box = document.getElementById('inventoryAdminArea');
             if (!currentUser || currentUser.role !== 'admin') {
@@ -1045,7 +1096,13 @@
                                 <select id="prod-category">${categories.map(c => `<option value="${c}">${c}</option>`).join('')}</select>
                             </div>
                             <div class="form-group"><label>Código de Barras</label><input type="text" id="prod-barcode" placeholder="Opcional"></div>
-                            <div class="form-group"><label>Color del Recuadro</label><input type="color" id="prod-color" value="#e3f2fd"></div>
+                            <div class="form-group"><label>Color del Recuadro</label>
+                                <div class="color-swatch-picker" id="colorSwatchPicker"></div>
+                                <div style="display:flex; gap:8px; align-items:center; margin-top:4px;">
+                                    <button type="button" class="btn btn-outline btn-sm" onclick="pickRandomColor()">🎲 Color aleatorio</button>
+                                    <input type="color" id="prod-color" value="#e3f2fd" onchange="selectColorSwatch(this.value)">
+                                </div>
+                            </div>
                         </div>
                         <button class="btn btn-primary" type="submit">Guardar Producto</button>
                     </form>
@@ -1059,6 +1116,7 @@
                 </div>
             `;
             renderInventoryTable();
+            renderColorSwatches(document.getElementById('prod-color').value);
         }
 
         function saveProduct(e) {
@@ -1111,6 +1169,7 @@
             document.getElementById('prod-color').value = p.color;
             document.getElementById('prod-category').value = p.category || categories[0];
             document.getElementById('prod-barcode').value = p.barcode || '';
+            renderColorSwatches(p.color);
         }
 
         function deleteProduct(id) {
@@ -1143,10 +1202,10 @@
                     <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;">Abierto: ${new Date(currentShift.openDate).toLocaleString()}</p>
                     <div class="summary-grid">
                         <div class="summary-item"><div class="label">Fondo Inicial</div><div class="value">${formatMoney(currentShift.openingCash)}</div></div>
-                        <div class="summary-item"><div class="label">Ventas Totales</div><div class="value">${formatMoney(totalSales)}</div></div>
+                        <div class="summary-item"><div class="label">Gastos/Retiros</div><div class="value">-${formatMoney(totalExpenses)}</div></div>
                         <div class="summary-item"><div class="label">Ventas en Efectivo</div><div class="value">${formatMoney(cashSales)}</div></div>
                         <div class="summary-item"><div class="label">Ventas por Transferencia</div><div class="value">${formatMoney(transferSales)}</div></div>
-                        <div class="summary-item"><div class="label">Gastos/Retiros</div><div class="value">-${formatMoney(totalExpenses)}</div></div>
+                        <div class="summary-item"><div class="label">Ventas Totales</div><div class="value">${formatMoney(totalSales)}</div></div>
                         <div class="summary-item"><div class="label">Efectivo Esperado</div><div class="value">${formatMoney(expected)}</div></div>
                     </div>
                     <button class="btn btn-primary btn-block" onclick="openCloseShiftModal()">Cerrar Turno / Realizar Cuadre</button>
@@ -1238,9 +1297,10 @@
             document.getElementById('closeShiftSummary').innerHTML = `
                 <div class="summary-item"><div class="label">Turno</div><div class="value">${currentShift.turnNumber} — ${currentShift.employeeName}</div></div>
                 <div class="summary-item"><div class="label">Fondo Inicial</div><div class="value">${formatMoney(currentShift.openingCash)}</div></div>
-                <div class="summary-item"><div class="label">Ventas Totales</div><div class="value">${formatMoney(totalSales)}</div></div>
+                <div class="summary-item"><div class="label">Ventas en Efectivo</div><div class="value">${formatMoney(cashSales)}</div></div>
                 <div class="summary-item"><div class="label">Ventas por Transferencia</div><div class="value">${formatMoney(transferSales)}</div></div>
-                <div class="summary-item"><div class="label">Efectivo Esperado</div><div class="value">${formatMoney(expected)}</div></div>
+                <div class="summary-item"><div class="label">Ventas Totales</div><div class="value">${formatMoney(totalSales)}</div></div>
+                <div class="summary-item"><div class="label">Efectivo Caja</div><div class="value">${formatMoney(expected)}</div></div>
             `;
             document.getElementById('countedCashInput').value = '';
             document.getElementById('shiftDifference').innerText = '$0.00';
@@ -1504,6 +1564,40 @@
             updateOfflineBanner();
         }
 
+        // ============ BOTÓN / GESTO "ATRÁS" DE ANDROID ============
+        let lastBackPressTime = 0;
+        function anyModalOpen() {
+            return document.querySelector('.generic-modal.active, .checkout-modal.active, .scanner-modal.active') !== null;
+        }
+        function closeTopmostModal() {
+            if (document.getElementById('scannerModal').classList.contains('active')) { closeCameraScanner(); return; }
+            if (document.getElementById('confirmModal').classList.contains('active')) { closeConfirm(); return; }
+            if (document.getElementById('expenseModal').classList.contains('active')) { closeExpenseModal(); return; }
+            if (document.getElementById('checkoutModal').classList.contains('active')) { requestCloseCheckout(); return; }
+            document.querySelectorAll('.generic-modal.active, .checkout-modal.active, .scanner-modal.active')
+                .forEach(m => m.classList.remove('active'));
+        }
+        function showBackToast() {
+            const toast = document.getElementById('backToast');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 1800);
+        }
+        function setupAndroidBackButton() {
+            const CapApp = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+            if (!CapApp) return;
+            CapApp.addListener('backButton', () => {
+                if (!currentUser) { CapApp.exitApp(); return; }
+                if (anyModalOpen()) { closeTopmostModal(); return; }
+                const now = Date.now();
+                if (now - lastBackPressTime < 2000) {
+                    CapApp.exitApp();
+                } else {
+                    lastBackPressTime = now;
+                    showBackToast();
+                }
+            });
+        }
+
         // ============ INICIO ============
         (function init() {
             const savedTheme = localStorage.getItem('themePref') || 'light';
@@ -1522,6 +1616,7 @@
                 applyRoleRestrictions();
             }
             renderAll();
+            setupAndroidBackButton();
         })();
     </script>
 </body>
