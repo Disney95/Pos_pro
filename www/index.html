@@ -4,6 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>POS Pro - Punto de Venta</title>
+    <!-- DIAGNÓSTICO TEMPORAL: muestra cualquier error de JS en pantalla -->
+    <script>
+        window.addEventListener('error', function(e) {
+            var msg = 'ERROR JS: ' + e.message + '\nArchivo: ' + e.filename + '\nLínea: ' + e.lineno + ':' + e.colno;
+            function showBanner() {
+                var div = document.createElement('div');
+                div.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#c62828;color:#fff;padding:14px;z-index:999999;font-size:13px;white-space:pre-wrap;font-family:monospace;';
+                div.textContent = msg;
+                document.body.appendChild(div);
+            }
+            if (document.body) { showBanner(); } else { document.addEventListener('DOMContentLoaded', showBanner); }
+        });
+    </script>
     <!-- Firebase SDK -->
     <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -1795,24 +1808,4 @@
             setTimeout(() => toast.classList.remove('show'), 1800);
         }
         function setupAndroidBackButton() {
-            const CapApp = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
-            if (!CapApp) return;
-            CapApp.addListener('backButton', () => {
-                if (!currentUser) { CapApp.exitApp(); return; }
-                if (anyModalOpen()) { closeTopmostModal(); return; }
-                const now = Date.now();
-                if (now - lastBackPressTime < 2000) {
-                    CapApp.exitApp();
-                } else {
-                    lastBackPressTime = now;
-                    showBackToast();
-                }
-            });
-        }
-
-        // ============ INICIO ============
-        (function init() {
-            const savedTheme = localStorage.getItem('themePref') || 'light';
-            document.getElementById('cfg-theme').value = savedTheme;
-            toggleTheme(savedTheme);
-   
+            const CapApp = window.Capacitor && window.Capacitor.Plugins &
