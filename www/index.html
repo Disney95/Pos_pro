@@ -193,12 +193,14 @@
         .change-amount.positive { color: var(--success-color); }
 
         /* OTROS PANELES */
-        .card-panel { background: var(--bg-card); border-radius: 8px; padding: 16px; border: 1px solid var(--border-color); width: 100%; margin-bottom: 16px; }
+        .card-panel { background: var(--bg-card); border-radius: 8px; padding: 16px; border: 1px solid var(--border-color); width: 100%; margin-bottom: 16px; overflow-x: hidden; box-sizing: border-box; }
         .form-group { margin-bottom: 12px; }
         .form-group label { display: block; margin-bottom: 4px; font-weight: bold; font-size: 0.9rem; }
         .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-main); }
 
         table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        .table-scroll { overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; }
+        .table-scroll table { min-width: 480px; }
         th, td { border: 1px solid var(--border-color); padding: 8px; text-align: left; font-size: 0.85rem; }
         th { background: rgba(0,0,0,0.05); }
 
@@ -327,8 +329,19 @@
         </div>
     </div>
 
+    <!-- MODAL HISTORIAL DE PAGOS -->
+    <div class="generic-modal" id="paymentHistoryModal">
+        <div class="generic-modal-content" style="max-height:85vh;">
+            <div class="generic-modal-header">
+                <h3>Historial de Pagos</h3>
+                <button class="btn btn-danger btn-sm" onclick="closePaymentHistoryModal()">Cerrar</button>
+            </div>
+            <div id="paymentHistoryList" style="overflow-y:auto; margin-top:10px;"></div>
+        </div>
+    </div>
+
     <header>
-        <h2>POS Professional <span style="font-size:0.6rem; font-weight:400; opacity:0.75; vertical-align:middle;">v1.1.0</span></h2>
+        <h2>POS Professional <span style="font-size:0.6rem; font-weight:400; opacity:0.75; vertical-align:middle;">v1.2.0</span></h2>
         <div style="display:flex; align-items:center; gap:8px;">
             <div class="user-chip" id="userChip">—</div>
             <button class="btn btn-outline btn-sm" style="background:rgba(255,255,255,0.15); color:white; border-color:rgba(255,255,255,0.4);" onclick="logout()">Salir</button>
@@ -378,10 +391,7 @@
                 <button class="btn btn-danger btn-sm" onclick="requestCloseCheckout()">Regresar</button>
             </div>
 
-            <div class="form-group" style="margin-top: 12px;">
-                <input type="text" id="clientName" placeholder="Nombre del Cliente...">
-            </div>
-            <div class="form-group">
+            <div class="form-group" style="margin-top: 10px;">
                 <select id="paymentMethod" onchange="renderCheckoutCart()">
                     <option value="Efectivo">Efectivo</option>
                     <option value="Transferencia">Transferencia</option>
@@ -406,12 +416,6 @@
                 <div style="font-size: 1rem; font-weight: bold; margin-top: 4px;">TOTAL A PAGAR:</div>
                 <div class="total-amount-large" id="cartTotalLarge">$0.00</div>
 
-                <div class="change-box" id="changeBox">
-                    <label style="font-size:0.8rem; font-weight:bold;">Efectivo recibido</label>
-                    <input type="number" step="0.01" id="cashReceivedInput" oninput="updateChange()" placeholder="0.00">
-                    <div class="change-amount" id="changeAmount">Cambio: $0.00</div>
-                </div>
-
                 <button class="btn btn-success btn-block" style="margin-top: 12px; font-size: 1.1rem; padding: 12px;" onclick="processSale()">Procesar Compra e Imprimir</button>
             </div>
         </div>
@@ -424,30 +428,43 @@
 
     <!-- 3. CAJA -->
     <div id="cash-view" class="view-section" style="flex-direction: column;">
+        <button class="btn-icon-scan" style="position:absolute; top:10px; right:16px; z-index:10;" onclick="openPaymentHistoryModal()" title="Historial de pagos">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="9"></circle>
+                <polyline points="12 7 12 12 15 15"></polyline>
+            </svg>
+        </button>
         <div class="card-panel" id="shiftControlPanel"></div>
         <div class="card-panel">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h3>Gastos / Retiros del Turno</h3>
                 <button class="btn btn-primary btn-sm" onclick="openExpenseModal()">+ Agregar</button>
             </div>
-            <table>
-                <thead><tr><th>Motivo</th><th>Monto</th><th></th></tr></thead>
-                <tbody id="expenseTable"></tbody>
-            </table>
+            <div class="table-scroll">
+                <table>
+                    <thead><tr><th>Motivo</th><th>Monto</th><th></th></tr></thead>
+                    <tbody id="expenseTable"></tbody>
+                </table>
+            </div>
         </div>
         <div class="card-panel admin-only" id="shiftHistoryPanel">
             <h3>Historial de Cuadres</h3>
-            <table>
-                <thead><tr><th>Turno</th><th>Dependiente</th><th>Fecha / Hora</th><th>Ventas Totales</th><th>Transferencias</th><th>Diferencia</th><th>Acción</th></tr></thead>
-                <tbody id="historyTable"></tbody>
-            </table>
+            <div class="table-scroll">
+                <table>
+                    <thead><tr><th>Turno</th><th>Dependiente</th><th>Fecha / Hora</th><th>Ventas Totales</th><th>Transferencias</th><th>Diferencia</th><th>Acción</th></tr></thead>
+                    <tbody id="historyTable"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <!-- 4. REPORTES -->
     <div id="reports-view" class="view-section" style="flex-direction: column;">
         <div class="card-panel">
-            <h3>Productos Más Vendidos</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3>Productos Más Vendidos</h3>
+                <button class="btn btn-outline btn-sm" onclick="resetSalesStats()">Restablecer Estadísticas</button>
+            </div>
             <div id="topSellingChart" style="margin-top:12px;"></div>
         </div>
         <div class="card-panel">
@@ -495,6 +512,16 @@
             <div class="form-group">
                 <label>Umbral de Stock Bajo</label>
                 <input type="number" id="cfg-lowstock" min="0" onchange="saveLowStockThreshold(this.value)">
+            </div>
+            <div class="form-group">
+                <label>Numeración de Turno</label>
+                <select id="cfg-turnmode" onchange="saveTurnNumberMode(this.value)">
+                    <option value="manual">Manual</option>
+                    <option value="cycle2">Ciclo 1-2</option>
+                    <option value="cycle3">Ciclo 1-2-3</option>
+                    <option value="cycle4">Ciclo 1-2-3-4</option>
+                </select>
+                <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">En modo automático, el número sugerido se puede cambiar a mano si hace falta.</p>
             </div>
             <div class="form-group">
                 <label>Categorías (separadas por coma)</label>
@@ -583,6 +610,9 @@
         ];
         let cart = [];
         let salesLog = JSON.parse(localStorage.getItem('salesLog')) || [];
+        let salesStats = JSON.parse(localStorage.getItem('salesStats')) || null;
+        let turnNumberMode = localStorage.getItem('turnNumberMode') || 'manual';
+        let paymentLedger = JSON.parse(localStorage.getItem('paymentLedger')) || null;
         let shiftHistory = JSON.parse(localStorage.getItem('shiftHistory')) || [];
         let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
         let currentShift = JSON.parse(localStorage.getItem('currentShift')) || null; // {openingCash, openDate}
@@ -669,6 +699,7 @@
             document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
             document.getElementById(viewId).classList.add('active');
             btn.classList.add('active');
+            btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
             renderAll();
         }
 
@@ -815,7 +846,6 @@
             if (!currentShift) { return alert("Debes abrir el turno (fondo de caja) antes de vender. Ve a la pestaña Caja."); }
             document.getElementById('globalDiscountType').value = 'none';
             document.getElementById('globalDiscountValue').value = '';
-            document.getElementById('cashReceivedInput').value = '';
             renderCheckoutCart();
             document.getElementById('checkoutModal').classList.add('active');
         }
@@ -889,8 +919,6 @@
 
         function renderCheckoutCart() {
             const list = document.getElementById('cartItemsList');
-            const method = document.getElementById('paymentMethod').value;
-            document.getElementById('changeBox').style.display = method === 'Efectivo' ? 'block' : 'none';
 
             if (cart.length === 0) {
                 list.innerHTML = '<p style="text-align:center; color:var(--text-muted); margin-top:20px;">No hay productos en el carrito</p>';
@@ -929,16 +957,6 @@
             document.getElementById('cartSubtotal').innerText = formatMoney(totals.subtotal);
             document.getElementById('cartDiscountAmount').innerText = `-${formatMoney(totals.totalDiscount)}`;
             document.getElementById('cartTotalLarge').innerText = formatMoney(totals.total);
-            updateChange();
-        }
-
-        function updateChange() {
-            const totals = computeCartTotals();
-            const received = parseFloat(document.getElementById('cashReceivedInput').value) || 0;
-            const change = received - totals.total;
-            const el = document.getElementById('changeAmount');
-            el.innerText = `Cambio: ${formatMoney(Math.max(0, change))}`;
-            el.className = 'change-amount ' + (change < 0 ? 'negative' : 'positive');
         }
 
         // ============ PROCESAR VENTA ============
@@ -950,12 +968,11 @@
             const method = document.getElementById('paymentMethod').value;
             let cashReceived = null, change = null;
             if (method === 'Efectivo') {
-                cashReceived = parseFloat(document.getElementById('cashReceivedInput').value) || 0;
-                if (cashReceived < totals.total) return alert("El efectivo recibido es menor al total a pagar");
-                change = cashReceived - totals.total;
+                cashReceived = totals.total;
+                change = 0;
             }
 
-            const client = document.getElementById('clientName').value.trim() || 'Cliente General';
+            const client = 'Cliente General';
 
             cart.forEach(item => {
                 const prod = products.find(p => p.id === item.id);
@@ -974,6 +991,8 @@
                 synced: false
             };
             salesLog.push(saleRecord);
+            addSaleToStats(saleRecord);
+            addSaleToPaymentLedger(saleRecord);
 
             if (!navigator.onLine) {
                 pendingSync.push(saleRecord);
@@ -984,7 +1003,6 @@
             printReceipt(saleRecord);
 
             cart = [];
-            document.getElementById('clientName').value = '';
             closeCheckout();
             renderAll();
             updateOfflineBanner();
@@ -1109,10 +1127,12 @@
                 </div>
                 <div class="card-panel">
                     <h3>Lista de Inventario</h3>
-                    <table>
-                        <thead><tr><th>Color</th><th>Nombre</th><th>Categoría</th><th>Precio</th><th>Stock</th><th>Código</th><th>Acciones</th></tr></thead>
-                        <tbody id="inventoryTable"></tbody>
-                    </table>
+                    <div class="table-scroll">
+                        <table>
+                            <thead><tr><th>Color</th><th>Nombre</th><th>Categoría</th><th>Precio</th><th>Stock</th><th>Código</th><th>Acciones</th></tr></thead>
+                            <tbody id="inventoryTable"></tbody>
+                        </table>
+                    </div>
                 </div>
             `;
             renderInventoryTable();
@@ -1234,7 +1254,7 @@
         function openOpenShiftModal() {
             document.getElementById('openingCashInput').value = '';
             document.getElementById('employeeNameInput').value = '';
-            document.getElementById('turnNumberInput').value = shiftHistory.length + 1;
+            document.getElementById('turnNumberInput').value = computeSuggestedTurnNumber();
             document.getElementById('openShiftModal').classList.add('active');
         }
         function confirmOpenShift() {
@@ -1352,17 +1372,118 @@
         }
 
         // ============ REPORTES ============
-        function renderReportsView() {
-            const box = document.getElementById('topSellingChart');
-            const tally = {};
+        function ensureSalesStatsInitialized() {
+            if (salesStats !== null) return;
+            salesStats = {};
             [...salesLog, ...shiftHistory.flatMap(s => s.details || [])].forEach(sale => {
                 sale.items.forEach(i => {
-                    if (!tally[i.name]) tally[i.name] = { qty: 0, revenue: 0 };
-                    tally[i.name].qty += i.qty;
-                    tally[i.name].revenue += i.price * i.qty;
+                    if (!salesStats[i.name]) salesStats[i.name] = { qty: 0, revenue: 0 };
+                    salesStats[i.name].qty += i.qty;
+                    salesStats[i.name].revenue += i.price * i.qty;
                 });
             });
-            const arr = Object.entries(tally).map(([name, v]) => ({ name, ...v })).sort((a, b) => b.qty - a.qty).slice(0, 10);
+            localStorage.setItem('salesStats', JSON.stringify(salesStats));
+        }
+        function addSaleToStats(saleRecord) {
+            ensureSalesStatsInitialized();
+            saleRecord.items.forEach(i => {
+                if (!salesStats[i.name]) salesStats[i.name] = { qty: 0, revenue: 0 };
+                salesStats[i.name].qty += i.qty;
+                salesStats[i.name].revenue += i.price * i.qty;
+            });
+            localStorage.setItem('salesStats', JSON.stringify(salesStats));
+        }
+        function resetSalesStats() {
+            showConfirm("¿Restablecer las estadísticas de productos más vendidos? Esto no afecta tus ventas ni el historial de caja.", () => {
+                salesStats = {};
+                localStorage.setItem('salesStats', JSON.stringify(salesStats));
+                renderReportsView();
+            });
+        }
+
+        // ============ HISTORIAL DE PAGOS (bitácora independiente) ============
+        function ensurePaymentLedgerInitialized() {
+            if (paymentLedger !== null) return;
+            paymentLedger = [];
+            shiftHistory.forEach(s => {
+                (s.details || []).forEach(sale => {
+                    paymentLedger.push({
+                        id: sale.id, turnNumber: s.turnNumber || '-', employeeName: s.employeeName || '-',
+                        date: sale.date, client: sale.client, method: sale.method, total: sale.total
+                    });
+                });
+            });
+            salesLog.forEach(sale => {
+                paymentLedger.push({
+                    id: sale.id, turnNumber: currentShift ? currentShift.turnNumber : '-',
+                    employeeName: currentShift ? currentShift.employeeName : '-',
+                    date: sale.date, client: sale.client, method: sale.method, total: sale.total
+                });
+            });
+            localStorage.setItem('paymentLedger', JSON.stringify(paymentLedger));
+        }
+        function addSaleToPaymentLedger(saleRecord) {
+            ensurePaymentLedgerInitialized();
+            paymentLedger.push({
+                id: saleRecord.id,
+                turnNumber: currentShift ? currentShift.turnNumber : '-',
+                employeeName: currentShift ? currentShift.employeeName : '-',
+                date: saleRecord.date, client: saleRecord.client, method: saleRecord.method, total: saleRecord.total
+            });
+            localStorage.setItem('paymentLedger', JSON.stringify(paymentLedger));
+        }
+        function openPaymentHistoryModal() {
+            ensurePaymentLedgerInitialized();
+            renderPaymentHistoryList();
+            document.getElementById('paymentHistoryModal').classList.add('active');
+        }
+        function closePaymentHistoryModal() {
+            document.getElementById('paymentHistoryModal').classList.remove('active');
+        }
+        function renderPaymentHistoryList() {
+            const box = document.getElementById('paymentHistoryList');
+            const sorted = [...paymentLedger].sort((a, b) => b.id - a.id);
+            if (sorted.length === 0) {
+                box.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px 0;">Sin pagos registrados todavía.</p>';
+                return;
+            }
+            box.innerHTML = sorted.map(entry => `
+                <div class="cart-item-row">
+                    <div class="cart-item-top">
+                        <div>
+                            <b style="font-size:0.95rem;">Turno ${entry.turnNumber} — ${entry.employeeName}</b>
+                            <div style="font-size:0.8rem; color:var(--text-muted);">${entry.date} · ${entry.client} · ${entry.method}</div>
+                            <div style="font-size:0.95rem; font-weight:bold; margin-top:2px;">${formatMoney(entry.total)}</div>
+                        </div>
+                        <div class="qty-controls">
+                            <button class="btn btn-outline btn-sm" onclick="copyPaymentEntry(${entry.id})">Copiar</button>
+                            <button class="btn btn-danger btn-sm" onclick="deletePaymentEntry(${entry.id})">Eliminar</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        function copyPaymentEntry(id) {
+            const entry = paymentLedger.find(e => e.id === id);
+            if (!entry) return;
+            const text = `Turno ${entry.turnNumber} — ${entry.employeeName}\nFecha: ${entry.date}\nCliente: ${entry.client}\nMétodo: ${entry.method}\nTotal: ${formatMoney(entry.total)}`;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => alert("Copiado al portapapeles")).catch(() => alert(text));
+            } else {
+                alert(text);
+            }
+        }
+        function deletePaymentEntry(id) {
+            showConfirm("¿Eliminar este registro del historial de pagos? Esto no afecta las cifras de caja ni las ventas reales.", () => {
+                paymentLedger = paymentLedger.filter(e => e.id !== id);
+                localStorage.setItem('paymentLedger', JSON.stringify(paymentLedger));
+                renderPaymentHistoryList();
+            });
+        }
+        function renderReportsView() {
+            ensureSalesStatsInitialized();
+            const box = document.getElementById('topSellingChart');
+            const arr = Object.entries(salesStats).map(([name, v]) => ({ name, ...v })).sort((a, b) => b.qty - a.qty).slice(0, 10);
             if (arr.length === 0) {
                 box.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem;">Aún no hay ventas registradas.</p>';
                 return;
@@ -1431,6 +1552,17 @@
             lowStockThreshold = parseInt(val) || 0;
             localStorage.setItem('lowStockThreshold', lowStockThreshold);
             renderPOS();
+        }
+
+        function saveTurnNumberMode(mode) {
+            turnNumberMode = mode;
+            localStorage.setItem('turnNumberMode', mode);
+        }
+        function computeSuggestedTurnNumber() {
+            if (turnNumberMode === 'manual') return shiftHistory.length + 1;
+            const cycleLength = { cycle2: 2, cycle3: 3, cycle4: 4 }[turnNumberMode] || 1;
+            const lastTurn = shiftHistory.length > 0 ? parseInt(shiftHistory[shiftHistory.length - 1].turnNumber) || 0 : 0;
+            return (lastTurn % cycleLength) + 1;
         }
 
         function saveCategories() {
@@ -1605,6 +1737,7 @@
             toggleTheme(savedTheme);
             document.getElementById('cfg-currency').value = currencySettings.code;
             document.getElementById('cfg-lowstock').value = lowStockThreshold;
+            document.getElementById('cfg-turnmode').value = turnNumberMode;
             document.getElementById('cfg-categories').value = categories.join(', ');
             document.getElementById('cfg-slogan').value = receiptSettings.slogan;
             document.getElementById('cfg-footer').value = receiptSettings.footer;
