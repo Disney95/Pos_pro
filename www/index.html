@@ -25,12 +25,12 @@
 
         body.dark-theme {
             --bg-primary: #000000;
-            --bg-card: #000000;
+            --bg-card: #1c1c1e;
             --text-main: #e8e8e8;
             --text-muted: #999999;
-            --accent-color: #25D366;
-            --accent-secondary: #128C7E;
-            --border-color: #1c1c1c;
+            --accent-color: #4a90e2;
+            --accent-secondary: #3a72b3;
+            --border-color: #2c2c2e;
         }
         body.dark-theme header,
         body.dark-theme nav,
@@ -218,6 +218,18 @@
         .color-swatch-picker { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
         .color-swatch { width: 34px; height: 34px; border-radius: 8px; border: 2px solid var(--border-color); cursor: pointer; }
         .color-swatch.selected { border-color: var(--accent-color); box-shadow: 0 0 0 2px var(--accent-color); }
+        /* LISTA DE AJUSTES (solo títulos, se abren en modal) */
+        .settings-list { display: flex; flex-direction: column; gap: 8px; }
+        .settings-list-item {
+            display: flex; align-items: center; justify-content: space-between;
+            background: var(--bg-card); padding: 16px; border-radius: 8px;
+            border: 1px solid var(--border-color); cursor: pointer;
+            font-weight: 600; font-size: 0.95rem; color: var(--text-main);
+        }
+        .settings-list-item:active { opacity: 0.7; }
+        .settings-list-item .chevron { color: var(--text-muted); font-size: 1.2rem; }
+        .settings-modal-content { max-height: 85vh; }
+
         .back-toast {
             position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
             background: rgba(0,0,0,0.85); color: white; padding: 10px 20px; border-radius: 20px;
@@ -480,19 +492,58 @@
 
     <!-- 5. AJUSTES -->
     <div id="settings-view" class="view-section" style="flex-direction: column;">
-        <div class="card-panel">
-            <h3>Configuración del Comprobante</h3>
+        <div class="settings-list">
+            <div class="settings-list-item" onclick="openSettingsModal('settingsModal-receipt')">
+                <span>Configuración del Comprobante</span><span class="chevron">›</span>
+            </div>
+            <div class="settings-list-item" onclick="openSettingsModal('settingsModal-preview')">
+                <span>Vista Previa del Comprobante</span><span class="chevron">›</span>
+            </div>
+            <div class="settings-list-item" onclick="openSettingsModal('settingsModal-general')">
+                <span>Ajustes Generales</span><span class="chevron">›</span>
+            </div>
+            <div class="settings-list-item" onclick="openSettingsModal('settingsModal-backup')">
+                <span>Copia de Seguridad</span><span class="chevron">›</span>
+            </div>
+            <div class="settings-list-item" onclick="openSettingsModal('settingsModal-sync')">
+                <span>Sincronización con Firebase</span><span class="chevron">›</span>
+            </div>
+            <div class="settings-list-item" onclick="openSettingsModal('settingsModal-users')">
+                <span>Usuarios y Contraseñas</span><span class="chevron">›</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALES DE AJUSTES -->
+    <div class="generic-modal" id="settingsModal-receipt">
+        <div class="generic-modal-content settings-modal-content">
+            <div class="generic-modal-header">
+                <h3>Configuración del Comprobante</h3>
+                <button class="btn btn-outline btn-sm" onclick="closeSettingsModal('settingsModal-receipt')">Cerrar</button>
+            </div>
             <div class="form-group"><label>Slogan / Subtítulo</label><input type="text" id="cfg-slogan" value="¡Gracias por su compra!" oninput="updateReceiptPreview()"></div>
             <div class="form-group"><label>Mensaje de Despedida</label><input type="text" id="cfg-footer" value="¡Vuelva pronto!" oninput="updateReceiptPreview()"></div>
             <div class="form-group"><label>URL del Logo (Opcional)</label><input type="text" id="cfg-logo" placeholder="https://dominio.com/logo.png" oninput="updateReceiptPreview()"></div>
             <button class="btn btn-primary" onclick="saveReceiptSettings()">Guardar Configuración</button>
         </div>
-        <div class="card-panel">
-            <h3>Vista Previa del Comprobante</h3>
+    </div>
+
+    <div class="generic-modal" id="settingsModal-preview">
+        <div class="generic-modal-content settings-modal-content">
+            <div class="generic-modal-header">
+                <h3>Vista Previa del Comprobante</h3>
+                <button class="btn btn-outline btn-sm" onclick="closeSettingsModal('settingsModal-preview')">Cerrar</button>
+            </div>
             <div id="receiptPreviewBox" style="max-width:300px; margin:10px auto 0; background:#ffffff; color:#1a1a1a; font-family:monospace; font-size:12px; padding:14px; border:1px solid var(--border-color); border-radius:6px; line-height:1.5;"></div>
         </div>
-        <div class="card-panel">
-            <h3>Ajustes Generales</h3>
+    </div>
+
+    <div class="generic-modal" id="settingsModal-general">
+        <div class="generic-modal-content settings-modal-content">
+            <div class="generic-modal-header">
+                <h3>Ajustes Generales</h3>
+                <button class="btn btn-outline btn-sm" onclick="closeSettingsModal('settingsModal-general')">Cerrar</button>
+            </div>
             <div class="form-group">
                 <label>Moneda</label>
                 <select id="cfg-currency" onchange="saveCurrency(this.value)">
@@ -529,8 +580,14 @@
             </div>
             <button class="btn btn-primary" onclick="saveCategories()">Guardar Categorías</button>
         </div>
-        <div class="card-panel">
-            <h3>Copia de Seguridad</h3>
+    </div>
+
+    <div class="generic-modal" id="settingsModal-backup">
+        <div class="generic-modal-content settings-modal-content">
+            <div class="generic-modal-header">
+                <h3>Copia de Seguridad</h3>
+                <button class="btn btn-outline btn-sm" onclick="closeSettingsModal('settingsModal-backup')">Cerrar</button>
+            </div>
             <p style="font-size:0.75rem; color:var(--text-muted);">Descarga un archivo con todos tus datos (productos, ventas, historial, ajustes) y guárdalo donde quieras — incluyendo Google Drive.</p>
             <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;">
                 <button class="btn btn-success" onclick="downloadFullBackup()">Descargar Respaldo Completo</button>
@@ -539,8 +596,14 @@
             </div>
             <p style="font-size:0.75rem; color:var(--text-muted); margin-top:10px;">Consejo: cuando el celular pregunte dónde guardar la descarga, elige "Guardar en Drive" (o mueve el archivo después con tu app de Archivos hacia la carpeta de Google Drive). Para restaurar, el mismo selector de archivos te deja elegir directamente un archivo guardado en tu Drive.</p>
         </div>
-        <div class="card-panel">
-            <h3>Sincronización con Firebase (opcional, avanzado)</h3>
+    </div>
+
+    <div class="generic-modal" id="settingsModal-sync">
+        <div class="generic-modal-content settings-modal-content">
+            <div class="generic-modal-header">
+                <h3>Sincronización con Firebase</h3>
+                <button class="btn btn-outline btn-sm" onclick="closeSettingsModal('settingsModal-sync')">Cerrar</button>
+            </div>
             <p style="font-size:0.75rem; color:var(--text-muted);">Requiere configurar tus propias credenciales de Firebase en el código.</p>
             <div class="form-group" style="margin-top:8px;">
                 <button class="btn btn-primary" onclick="syncCloud()">Sincronizar con Firebase</button>
@@ -548,8 +611,14 @@
                 <span id="auth-status" style="display:block; font-size:0.8rem; margin-top:6px; color:var(--text-muted);"></span>
             </div>
         </div>
-        <div class="card-panel">
-            <h3>Usuarios y Contraseñas</h3>
+    </div>
+
+    <div class="generic-modal" id="settingsModal-users">
+        <div class="generic-modal-content settings-modal-content">
+            <div class="generic-modal-header">
+                <h3>Usuarios y Contraseñas</h3>
+                <button class="btn btn-outline btn-sm" onclick="closeSettingsModal('settingsModal-users')">Cerrar</button>
+            </div>
             <div class="form-group"><label>Nueva contraseña de Administrador</label><input type="password" id="cfg-adminpass" placeholder="Dejar en blanco para no cambiar"></div>
             <div class="form-group"><label>Nueva contraseña de Cajero</label><input type="password" id="cfg-cajeropass" placeholder="Dejar en blanco para no cambiar"></div>
             <button class="btn btn-primary" onclick="savePasswords()">Actualizar Contraseñas</button>
@@ -1697,6 +1766,13 @@
         }
 
         // ============ BOTÓN / GESTO "ATRÁS" DE ANDROID ============
+        function openSettingsModal(id) {
+            document.getElementById(id).classList.add('active');
+        }
+        function closeSettingsModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
         let lastBackPressTime = 0;
         function anyModalOpen() {
             return document.querySelector('.generic-modal.active, .checkout-modal.active, .scanner-modal.active') !== null;
@@ -1745,12 +1821,4 @@
             updateReceiptPreview();
 
             if (currentUser) {
-                document.getElementById('loginOverlay').classList.remove('active');
-                applyRoleRestrictions();
-            }
-            renderAll();
-            setupAndroidBackButton();
-        })();
-    </script>
-</body>
-</html>
+                document.getElementById('loginOverlay').classLis
