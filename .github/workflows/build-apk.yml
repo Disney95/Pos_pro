@@ -41,13 +41,40 @@ jobs:
       - name: Dar permisos de ejecución a gradlew
         run: chmod +x android/gradlew
 
-      - name: Compilar APK (debug, listo para instalar)
+      - name: Compilar APK de depuración (para pruebas rápidas)
         run: |
           cd android
           ./gradlew assembleDebug
 
-      - name: Subir APK como artefacto descargable
+      - name: Subir APK de depuración como artefacto descargable
         uses: actions/upload-artifact@v4
         with:
           name: pos-pro-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Decodificar la llave de firma
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > release.keystore
+
+      - name: Compilar AAB firmado (para Google Play)
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          cd android
+          ./gradlew bundleRelease \
+            -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/release.keystore \
+            -Pandroid.injected.signing.store.password=$ANDROID_KEYSTORE_PASSWORD \
+            -Pandroid.injected.signing.key.alias=$ANDROID_KEY_ALIAS \
+            -Pandroid.injected.signing.key.password=$ANDROID_KEY_PASSWORD
+
+      - name: Subir AAB firmado como artefacto descargable
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pos-pro-aab-firmado
+          path: android/app/build/outputs/bundle/release/app-release.aab
