@@ -66,6 +66,50 @@ jobs:
               print("Los permisos ya estaban presentes")
           PYEOF
 
+      - name: Agregar permiso de Cámara al AndroidManifest.xml (necesario para escanear códigos con la cámara)
+        run: |
+          python3 - <<'PYEOF'
+          path = "android/app/src/main/AndroidManifest.xml"
+          with open(path, "r", encoding="utf-8") as f:
+              content = f.read()
+          if "android.permission.CAMERA" not in content:
+              permissions = (
+                  '    <uses-permission android:name="android.permission.CAMERA" />\n'
+                  '    <uses-feature android:name="android.hardware.camera" android:required="false" />\n'
+                  '    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />\n'
+              )
+              idx = content.find(">", content.find("<manifest")) + 1
+              content = content[:idx] + "\n" + permissions + content[idx:]
+              with open(path, "w", encoding="utf-8") as f:
+                  f.write(content)
+              print("Permiso de Cámara agregado al manifiesto")
+          else:
+              print("El permiso de Cámara ya estaba presente")
+          PYEOF
+
+      - name: Poner la barra de estado y la barra de navegación de Android en blanco
+        run: |
+          python3 - <<'PYEOF'
+          path = "android/app/src/main/res/values/styles.xml"
+          with open(path, "r", encoding="utf-8") as f:
+              content = f.read()
+          if "windowLightNavigationBar" not in content:
+              idx_style = content.find('<style name="AppTheme"')
+              idx_close = content.find("</style>", idx_style)
+              items = (
+                  '\n        <item name="android:statusBarColor">@android:color/white</item>\n'
+                  '        <item name="android:navigationBarColor">@android:color/white</item>\n'
+                  '        <item name="android:windowLightStatusBar">true</item>\n'
+                  '        <item name="android:windowLightNavigationBar">true</item>\n    '
+              )
+              content = content[:idx_close] + items + content[idx_close:]
+              with open(path, "w", encoding="utf-8") as f:
+                  f.write(content)
+              print("Colores de barra de estado/navegación puestos en blanco")
+          else:
+              print("Ya estaban configurados")
+          PYEOF
+
       - name: Dar permisos de ejecución a gradlew
         run: chmod +x android/gradlew
 
