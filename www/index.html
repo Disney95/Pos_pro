@@ -14,6 +14,28 @@
 </head>
 <body>
 
+    <!-- ACTIVACIÓN Y VALIDACIÓN DE LICENCIA (se muestra antes que el login) -->
+    <div class="login-overlay" id="licenseOverlay">
+        <div class="login-card">
+            <div id="licenseFormBox">
+                <h2>Activación de Licencia</h2>
+                <p style="color:var(--text-muted); font-size:0.85rem; margin-top:6px;">Ingresa los datos que te dio tu proveedor para activar esta copia en este dispositivo.</p>
+                <div class="form-group" style="margin-top:14px;">
+                    <input type="email" id="licenseEmail" placeholder="Correo electrónico">
+                </div>
+                <div class="form-group">
+                    <input type="text" id="licenseKeyInput" placeholder="Clave de licencia" style="text-transform:uppercase;">
+                </div>
+                <button class="btn btn-primary btn-block" id="licenseActivateBtn" onclick="activateLicense()">Activar</button>
+                <p id="licenseMsg" style="font-size:0.8rem; color:var(--text-muted); margin-top:10px; min-height:1em;"></p>
+            </div>
+            <div id="licenseBlockedBox" style="display:none;">
+                <h2>Licencia no disponible</h2>
+                <p id="licenseBlockedMsg" style="color:var(--danger-color); font-size:0.9rem; margin-top:10px;"></p>
+            </div>
+        </div>
+    </div>
+
     <!-- LOGIN / SELECCIÓN DE ROL -->
     <div class="login-overlay active" id="loginOverlay">
         <div class="login-card">
@@ -121,10 +143,13 @@
     <div id="toastContainer"></div>
 
     <header>
-        <h2>POS Professional</h2>
+        <div>
+            <h2>POS Professional</h2>
+            <span class="app-version" id="appVersionLabel">v1.3.0</span>
+        </div>
         <div style="display:flex; align-items:center; gap:8px;">
             <div class="user-chip" id="userChip">—</div>
-            <button class="btn btn-outline btn-sm" style="background:rgba(255,255,255,0.15); color:white; border-color:rgba(255,255,255,0.4);" onclick="logout()">Salir</button>
+            <button class="btn btn-outline btn-sm header-exit-btn" onclick="logout()">Salir</button>
         </div>
     </header>
 
@@ -417,6 +442,8 @@
         <p style="text-align: center;" id="rec-footer"></p>
     </div>
 
+    <script src="js/firebase-config.js"></script>
+    <script src="js/license.js"></script>
     <script src="js/printer.js"></script>
     <script src="js/app.js"></script>
 </body>
