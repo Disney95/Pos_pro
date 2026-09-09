@@ -43,6 +43,29 @@ jobs:
       - name: Sincronizar proyecto web con Android
         run: npx cap sync android
 
+      - name: Agregar permisos de Bluetooth al AndroidManifest.xml
+        run: |
+          python3 - <<'PYEOF'
+          path = "android/app/src/main/AndroidManifest.xml"
+          with open(path, "r", encoding="utf-8") as f:
+              content = f.read()
+          if "BLUETOOTH_SCAN" not in content:
+              permissions = (
+                  '    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />\n'
+                  '    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />\n'
+                  '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />\n'
+                  '    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />\n'
+                  '    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />\n'
+              )
+              idx = content.find(">", content.find("<manifest")) + 1
+              content = content[:idx] + "\n" + permissions + content[idx:]
+              with open(path, "w", encoding="utf-8") as f:
+                  f.write(content)
+              print("Permisos de Bluetooth agregados al manifiesto")
+          else:
+              print("Los permisos ya estaban presentes")
+          PYEOF
+
       - name: Dar permisos de ejecución a gradlew
         run: chmod +x android/gradlew
 
