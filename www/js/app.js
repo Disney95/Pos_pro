@@ -1,23 +1,4 @@
-// ============ CONFIGURACIÓN DE FIREBASE ============
-        const firebaseConfig = {
-            apiKey: "TU_API_KEY",
-            authDomain: "TU_PROJECT_ID.firebaseapp.com",
-            projectId: "TU_PROJECT_ID",
-            storageBucket: "TU_PROJECT_ID.appspot.com",
-            messagingSenderId: "TU_SENDER_ID",
-            appId: "TU_APP_ID"
-        };
-        let firebaseReady = false;
-        if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY") {
-            try {
-                firebase.initializeApp(firebaseConfig);
-                firebaseReady = true;
-            } catch (e) { console.warn("Firebase no se pudo inicializar:", e.message); }
-        }
-        const auth = firebaseReady ? firebase.auth() : null;
-        const db = firebaseReady ? firebase.firestore() : null;
-
-        // ============ ESTADO DE LA APLICACIÓN ============
+// ============ ESTADO DE LA APLICACIÓN ============
         let products = JSON.parse(localStorage.getItem('products')) || [
             { id: 1, name: "Café", price: 2.50, stock: 20, color: "#ffe0b2", category: "Bebidas", barcode: "7501000000011" },
             { id: 2, name: "Agua 500ml", price: 1.00, stock: 50, color: "#bbdefb", category: "Bebidas", barcode: "7501000000028" },
@@ -49,6 +30,7 @@
         let systemThemeListenerAdded = false;
         let turnNumberMode = localStorage.getItem('turnNumberMode') || 'manual';
         let paymentsLog = JSON.parse(localStorage.getItem('paymentsLog')) || [];
+        const APP_VERSION = '1.3.0'; // Debe coincidir con "version" en package.json
 
         // Paleta propia de 12 tonos suaves (ni chillones ni apagados) para las tarjetas de producto
         const PRODUCT_COLOR_PALETTE = [
@@ -241,8 +223,13 @@
                 { fps: 10, qrbox: 220 },
                 (decodedText) => { handleBarcodeInput(decodedText); closeCameraScanner(); },
                 () => {}
-            ).catch(() => {
-                document.getElementById('barcodeScannerBox').innerHTML = '<p style="text-align:center; color:var(--text-muted);">No se pudo acceder a la cámara.</p>';
+            ).catch((err) => {
+                const msg = (err && err.name === 'NotAllowedError')
+                    ? 'Permiso de cámara denegado. Ve a Ajustes del sistema &gt; Apps &gt; POS Professional &gt; Permisos, y activa la Cámara.'
+                    : (err && err.name === 'NotFoundError')
+                        ? 'No se encontró ninguna cámara en este dispositivo.'
+                        : 'No se pudo acceder a la cámara.';
+                document.getElementById('barcodeScannerBox').innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:0 10px;">${msg}</p>`;
             });
         }
         function closeCameraScanner() {
@@ -1153,6 +1140,7 @@
             document.getElementById('cfg-currency').value = currencySettings.code;
             document.getElementById('cfg-lowstock').value = lowStockThreshold;
             document.getElementById('cfg-turnmode').value = turnNumberMode;
+            document.getElementById('appVersionLabel').innerText = 'v' + APP_VERSION;
             document.getElementById('cfg-categories').value = categories.join(', ');
             document.getElementById('cfg-slogan').value = receiptSettings.slogan;
             document.getElementById('cfg-footer').value = receiptSettings.footer;
