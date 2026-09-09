@@ -54,6 +54,18 @@
         </div>
     </div>
 
+    <!-- MODAL HISTORIAL DE PAGOS (BITÁCORA INDEPENDIENTE, NO AFECTA CAJA REAL) -->
+    <div class="generic-modal" id="paymentsHistoryModal">
+        <div class="generic-modal-content">
+            <div class="generic-modal-header">
+                <h3>Historial de Pagos</h3>
+                <button class="btn btn-danger btn-sm" onclick="closePaymentsHistoryModal()">Cerrar</button>
+            </div>
+            <p style="font-size:0.75rem; color:var(--text-muted); margin:10px 0;">Bitácora de todos los pagos de todos los turnos. Eliminar un registro aquí no afecta las cifras reales de caja ni de ventas.</p>
+            <div id="paymentsHistoryList"></div>
+        </div>
+    </div>
+
     <!-- MODAL EMPAREJAR IMPRESORA TÉRMICA BLUETOOTH -->
     <div class="generic-modal" id="printerPairModal">
         <div class="generic-modal-content">
@@ -160,9 +172,6 @@
             </div>
 
             <div class="form-group" style="margin-top: 12px;">
-                <input type="text" id="clientName" placeholder="Nombre del Cliente...">
-            </div>
-            <div class="form-group">
                 <select id="paymentMethod" onchange="renderCheckoutCart()">
                     <option value="Efectivo">Efectivo</option>
                     <option value="Transferencia">Transferencia</option>
@@ -187,12 +196,6 @@
                 <div style="font-size: 1rem; font-weight: bold; margin-top: 4px;">TOTAL A PAGAR:</div>
                 <div class="total-amount-large" id="cartTotalLarge">$0.00</div>
 
-                <div class="change-box" id="changeBox">
-                    <label style="font-size:0.8rem; font-weight:bold;">Efectivo recibido</label>
-                    <input type="number" step="0.01" id="cashReceivedInput" oninput="updateChange()" placeholder="0.00">
-                    <div class="change-amount" id="changeAmount">Cambio: $0.00</div>
-                </div>
-
                 <button class="btn btn-success btn-block" style="margin-top: 12px; font-size: 1.1rem; padding: 12px;" onclick="processSale()">Procesar Compra e Imprimir</button>
             </div>
         </div>
@@ -205,30 +208,38 @@
 
     <!-- 3. CAJA -->
     <div id="cash-view" class="view-section" style="flex-direction: column;">
+        <button class="payments-history-btn" title="Historial de pagos" onclick="openPaymentsHistoryModal()">⏱</button>
         <div class="card-panel" id="shiftControlPanel"></div>
         <div class="card-panel">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h3>Gastos / Retiros del Turno</h3>
                 <button class="btn btn-primary btn-sm" onclick="openExpenseModal()">+ Agregar</button>
             </div>
-            <table>
-                <thead><tr><th>Motivo</th><th>Monto</th><th></th></tr></thead>
-                <tbody id="expenseTable"></tbody>
-            </table>
+            <div class="table-scroll-wrap">
+                <table>
+                    <thead><tr><th>Motivo</th><th>Monto</th><th></th></tr></thead>
+                    <tbody id="expenseTable"></tbody>
+                </table>
+            </div>
         </div>
         <div class="card-panel admin-only" id="shiftHistoryPanel">
             <h3>Historial de Cuadres</h3>
-            <table>
-                <thead><tr><th>Turno</th><th>Dependiente</th><th>Fecha / Hora</th><th>Ventas Totales</th><th>Transferencias</th><th>Diferencia</th><th>Acción</th></tr></thead>
-                <tbody id="historyTable"></tbody>
-            </table>
+            <div class="table-scroll-wrap">
+                <table>
+                    <thead><tr><th>Turno</th><th>Dependiente</th><th>Fecha / Hora</th><th>Ventas Totales</th><th>Transferencias</th><th>Diferencia</th><th>Acción</th></tr></thead>
+                    <tbody id="historyTable"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <!-- 4. REPORTES -->
     <div id="reports-view" class="view-section" style="flex-direction: column;">
         <div class="card-panel">
-            <h3>Productos Más Vendidos</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3>Productos Más Vendidos</h3>
+                <button class="btn btn-outline btn-sm" onclick="resetTopSellingStats()">Restablecer Estadísticas</button>
+            </div>
             <div id="topSellingChart" style="margin-top:12px;"></div>
         </div>
         <div class="card-panel">
@@ -312,6 +323,16 @@
                 <div class="form-group">
                     <label>Umbral de Stock Bajo</label>
                     <input type="number" id="cfg-lowstock" min="0" onchange="saveLowStockThreshold(this.value)">
+                </div>
+                <div class="form-group">
+                    <label>Numeración de Turno</label>
+                    <select id="cfg-turnmode" onchange="saveTurnNumberMode(this.value)">
+                        <option value="manual">Manual</option>
+                        <option value="cycle2">Automático — Ciclo 1-2</option>
+                        <option value="cycle3">Automático — Ciclo 1-2-3</option>
+                        <option value="cycle4">Automático — Ciclo 1-2-3-4</option>
+                    </select>
+                    <p style="font-size:0.72rem; color:var(--text-muted); margin-top:6px;">El número sugerido al abrir turno siempre se puede cambiar a mano.</p>
                 </div>
                 <div class="form-group">
                     <label>Categorías (separadas por coma)</label>
