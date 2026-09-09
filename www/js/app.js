@@ -149,14 +149,28 @@
         // ============ ACORDEÓN DE AJUSTES ============
         // Cada encabezado de sección se muestra solo (colapsado); al tocarlo
         // se despliegan sus opciones. Toca de nuevo para volver a ocultarlas.
+        function setSettingsSectionOpen(panel, open) {
+            const body = panel.querySelector('.settings-body');
+            panel.classList.toggle('open', open);
+            if (!body) return;
+            if (open) {
+                // Se mide la altura real del contenido (en vez de usar un max-height
+                // fijo y sobredimensionado) para que el acordeón nunca corte
+                // opciones ni bloquee el scroll hacia los encabezados siguientes.
+                body.style.maxHeight = body.scrollHeight + 'px';
+            } else {
+                body.style.maxHeight = '0px';
+            }
+        }
+
         function toggleSettingsSection(headerEl) {
             const panel = headerEl.closest('.card-panel');
             if (!panel) return;
             const wasOpen = panel.classList.contains('open');
             panel.parentElement.querySelectorAll('.card-panel.open').forEach(p => {
-                if (p !== panel) p.classList.remove('open');
+                if (p !== panel) setSettingsSectionOpen(p, false);
             });
-            panel.classList.toggle('open', !wasOpen);
+            setSettingsSectionOpen(panel, !wasOpen);
         }
 
         function switchTab(viewId, btn) {
@@ -534,6 +548,10 @@
                 <div style="border-bottom:1px dashed #999; margin:6px 0;"></div>
                 <div style="text-align:center;">${footer}</div>
             `;
+            const panel = box.closest('.card-panel');
+            if (panel && panel.classList.contains('open')) {
+                setSettingsSectionOpen(panel, true);
+            }
         }
 
         // ============ INVENTARIO (SOLO ADMIN) ============
