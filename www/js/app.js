@@ -47,6 +47,29 @@
         let html5QrScanner = null;
         let currencySettings = JSON.parse(localStorage.getItem('currencySettings')) || { code: 'USD' };
         let systemThemeListenerAdded = false;
+        let turnNumberMode = localStorage.getItem('turnNumberMode') || 'manual';
+        let paymentsLog = JSON.parse(localStorage.getItem('paymentsLog')) || [];
+
+        // Paleta propia de 12 tonos suaves (ni chillones ni apagados) para las tarjetas de producto
+        const PRODUCT_COLOR_PALETTE = [
+            '#E8B4B8', '#E8C9A0', '#E8DFA0', '#C9DFA0',
+            '#A0D8B0', '#A0D8D0', '#A0C8E8', '#A8B0E8',
+            '#C4A0E8', '#E0A0D8', '#D4B8A0', '#BFC4CC'
+        ];
+
+        // Contador independiente para "Productos Más Vendidos" (no afecta ventas/caja reales)
+        let statsTally = JSON.parse(localStorage.getItem('statsTally'));
+        if (!statsTally) {
+            statsTally = {};
+            [...salesLog, ...shiftHistory.flatMap(s => s.details || [])].forEach(sale => {
+                sale.items.forEach(i => {
+                    if (!statsTally[i.name]) statsTally[i.name] = { qty: 0, revenue: 0 };
+                    statsTally[i.name].qty += i.qty;
+                    statsTally[i.name].revenue += i.price * i.qty;
+                });
+            });
+            localStorage.setItem('statsTally', JSON.stringify(statsTally));
+        }
 
         // ============ MONEDA ============
         // ============ TOAST DE CONFIRMACIÓN ============
@@ -141,6 +164,9 @@
             document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
             document.getElementById(viewId).classList.add('active');
             btn.classList.add('active');
+            if (btn.scrollIntoView) {
+                btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
             renderAll();
         }
 
@@ -287,7 +313,6 @@
             if (!currentShift) { return alert("Debes abrir el turno (fondo de caja) antes de vender. Ve a la pestaña Caja."); }
             document.getElementById('globalDiscountType').value = 'none';
             document.getElementById('globalDiscountValue').value = '';
-            document.getElementById('cashReceivedInput').value = '';
             renderCheckoutCart();
             document.getElementById('checkoutModal').classList.add('active');
         }
@@ -360,8 +385,6 @@
 
         function renderCheckoutCart() {
             const list = document.getElementById('cartItemsList');
-            const method = document.getElementById('paymentMethod').value;
-            document.getElementById('changeBox').style.display = method === 'Efectivo' ? 'block' : 'none';
 
             if (cart.length === 0) {
                 list.innerHTML = '<p style="text-align:center; color:var(--text-muted); margin-top:20px;">No hay productos en el carrito</p>';
@@ -400,16 +423,6 @@
             document.getElementById('cartSubtotal').innerText = formatMoney(totals.subtotal);
             document.getElementById('cartDiscountAmount').innerText = `-${formatMoney(totals.totalDiscount)}`;
             document.getElementById('cartTotalLarge').innerText = formatMoney(totals.total);
-            updateChange();
-        }
-
-        function updateChange() {
-            const totals = computeCartTotals();
-            const received = parseFloat(document.getElementById('cashReceivedInput').value) || 0;
-            const change = received - totals.total;
-            const el = document.getElementById('changeAmount');
-            el.innerText = `Cambio: ${formatMoney(Math.max(0, change))}`;
-            el.className = 'change-amount ' + (change < 0 ? 'negative' : 'positive');
         }
 
         // ============ PROCESAR VENTA ============
@@ -419,32 +432,28 @@
             if (totals.total <= 0) return alert("El total de la venta debe ser mayor a $0.00");
 
             const method = document.getElementById('paymentMethod').value;
-            let cashReceived = null, change = null;
-            if (method === 'Efectivo') {
-                cashReceived = parseFloat(document.getElementById('cashReceivedInput').value) || 0;
-                if (cashReceived < totals.total) return alert("El efectivo recibido es menor al total a pagar");
-                change = cashReceived - totals.total;
-            }
-
-            const client = document.getElementById('clientName').value.trim() || 'Cliente General';
+            const client = 'Cliente General';
 
             cart.forEach(item => {
                 const prod = products.find(p => p.id === item.id);
                 if (prod) prod.stock -= item.qty; // Descuento definitivo del stock
             });
 
+            const now = new Date();
             const saleRecord = {
                 id: Date.now(),
                 client, method,
                 subtotal: totals.subtotal,
                 discount: totals.totalDiscount,
                 total: totals.total,
-                cashReceived, change,
+                cashReceived: null, change: null,
                 items: cart.map(i => ({ id: i.id, name: i.name, price: i.price, qty: i.qty })),
-                date: new Date().toLocaleString(),
+                date: now.toLocaleString(),
                 synced: false
             };
             salesLog.push(saleRecord);
+            registerStatsTally(saleRecord);
+            registerPaymentLogEntry(saleRecord, now);
 
             if (!navigator.onLine) {
                 pendingSync.push(saleRecord);
@@ -455,7 +464,6 @@
             await printReceipt(saleRecord);
 
             cart = [];
-            document.getElementById('clientName').value = '';
             closeCheckout();
             renderAll();
             updateOfflineBanner();
@@ -485,8 +493,7 @@
             document.getElementById('rec-subtotal').innerText = formatMoney(saleRecord.subtotal);
             document.getElementById('rec-discount').innerText = `-${formatMoney(saleRecord.discount)}`;
             document.getElementById('rec-total').innerText = formatMoney(saleRecord.total);
-            document.getElementById('rec-change-line').innerText = saleRecord.method === 'Efectivo'
-                ? `Recibido: ${formatMoney(saleRecord.cashReceived)} · Cambio: ${formatMoney(saleRecord.change)}` : '';
+            document.getElementById('rec-change-line').innerText = '';
 
             const logoImg = document.getElementById('rec-logo');
             if (receiptSettings.logo) { logoImg.src = receiptSettings.logo; logoImg.style.display = 'block'; }
@@ -549,20 +556,46 @@
                                 <select id="prod-category">${categories.map(c => `<option value="${c}">${c}</option>`).join('')}</select>
                             </div>
                             <div class="form-group"><label>Código de Barras</label><input type="text" id="prod-barcode" placeholder="Opcional"></div>
-                            <div class="form-group"><label>Color del Recuadro</label><input type="color" id="prod-color" value="#e3f2fd"></div>
+                            <div class="form-group">
+                                <label>Color del Recuadro</label>
+                                <input type="hidden" id="prod-color" value="${PRODUCT_COLOR_PALETTE[0]}">
+                                <div class="color-swatch-grid" id="colorSwatchGrid"></div>
+                                <button type="button" class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="randomizeProductColor()">🎲 Color aleatorio</button>
+                            </div>
                         </div>
                         <button class="btn btn-primary" type="submit">Guardar Producto</button>
                     </form>
                 </div>
                 <div class="card-panel">
                     <h3>Lista de Inventario</h3>
-                    <table>
-                        <thead><tr><th>Color</th><th>Nombre</th><th>Categoría</th><th>Precio</th><th>Stock</th><th>Código</th><th>Acciones</th></tr></thead>
-                        <tbody id="inventoryTable"></tbody>
-                    </table>
+                    <div class="table-scroll-wrap">
+                        <table>
+                            <thead><tr><th>Color</th><th>Nombre</th><th>Categoría</th><th>Precio</th><th>Stock</th><th>Código</th><th>Acciones</th></tr></thead>
+                            <tbody id="inventoryTable"></tbody>
+                        </table>
+                    </div>
                 </div>
             `;
+            renderColorSwatches(PRODUCT_COLOR_PALETTE[0]);
             renderInventoryTable();
+        }
+
+        // ============ SELECTOR DE COLOR PERSONALIZADO (REEMPLAZA EL NATIVO) ============
+        function renderColorSwatches(selected) {
+            const grid = document.getElementById('colorSwatchGrid');
+            if (!grid) return;
+            const sel = (selected || '').toLowerCase();
+            grid.innerHTML = PRODUCT_COLOR_PALETTE.map(c =>
+                `<button type="button" class="color-swatch ${c.toLowerCase() === sel ? 'selected' : ''}" style="background:${c};" onclick="selectProductColor('${c}')" title="${c}"></button>`
+            ).join('');
+        }
+        function selectProductColor(color) {
+            document.getElementById('prod-color').value = color;
+            renderColorSwatches(color);
+        }
+        function randomizeProductColor() {
+            const c = PRODUCT_COLOR_PALETTE[Math.floor(Math.random() * PRODUCT_COLOR_PALETTE.length)];
+            selectProductColor(c);
         }
 
         function saveProduct(e) {
@@ -583,6 +616,7 @@
             }
             document.getElementById('prod-form').reset();
             document.getElementById('prod-id').value = '';
+            selectProductColor(PRODUCT_COLOR_PALETTE[0]);
             saveData();
             renderAll();
         }
@@ -612,7 +646,7 @@
             document.getElementById('prod-name').value = p.name;
             document.getElementById('prod-price').value = p.price;
             document.getElementById('prod-stock').value = p.stock;
-            document.getElementById('prod-color').value = p.color;
+            selectProductColor(p.color);
             document.getElementById('prod-category').value = p.category || categories[0];
             document.getElementById('prod-barcode').value = p.barcode || '';
         }
@@ -647,10 +681,10 @@
                     <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;">Abierto: ${new Date(currentShift.openDate).toLocaleString()}</p>
                     <div class="summary-grid">
                         <div class="summary-item"><div class="label">Fondo Inicial</div><div class="value">${formatMoney(currentShift.openingCash)}</div></div>
-                        <div class="summary-item"><div class="label">Ventas Totales</div><div class="value">${formatMoney(totalSales)}</div></div>
+                        <div class="summary-item"><div class="label">Gastos/Retiros</div><div class="value">-${formatMoney(totalExpenses)}</div></div>
                         <div class="summary-item"><div class="label">Ventas en Efectivo</div><div class="value">${formatMoney(cashSales)}</div></div>
                         <div class="summary-item"><div class="label">Ventas por Transferencia</div><div class="value">${formatMoney(transferSales)}</div></div>
-                        <div class="summary-item"><div class="label">Gastos/Retiros</div><div class="value">-${formatMoney(totalExpenses)}</div></div>
+                        <div class="summary-item"><div class="label">Ventas Totales</div><div class="value">${formatMoney(totalSales)}</div></div>
                         <div class="summary-item"><div class="label">Efectivo Esperado</div><div class="value">${formatMoney(expected)}</div></div>
                     </div>
                     <button class="btn btn-primary btn-block" onclick="openCloseShiftModal()">Cerrar Turno / Realizar Cuadre</button>
@@ -674,10 +708,24 @@
             }
         }
 
+        // ============ NUMERACIÓN DE TURNO CONFIGURABLE ============
+        function saveTurnNumberMode(mode) {
+            turnNumberMode = mode;
+            localStorage.setItem('turnNumberMode', mode);
+        }
+        function computeSuggestedTurnNumber() {
+            const cycleLen = turnNumberMode === 'cycle2' ? 2 : turnNumberMode === 'cycle3' ? 3 : turnNumberMode === 'cycle4' ? 4 : 0;
+            if (!cycleLen) return shiftHistory.length + 1; // Manual: sugerencia consecutiva de siempre
+            if (shiftHistory.length === 0) return 1;
+            const lastNum = parseInt(shiftHistory[shiftHistory.length - 1].turnNumber) || 0;
+            const next = lastNum + 1;
+            return next > cycleLen ? 1 : next;
+        }
+
         function openOpenShiftModal() {
             document.getElementById('openingCashInput').value = '';
             document.getElementById('employeeNameInput').value = '';
-            document.getElementById('turnNumberInput').value = shiftHistory.length + 1;
+            document.getElementById('turnNumberInput').value = computeSuggestedTurnNumber();
             document.getElementById('openShiftModal').classList.add('active');
         }
         function confirmOpenShift() {
@@ -741,8 +789,9 @@
                 <div class="summary-item"><div class="label">Turno</div><div class="value">${currentShift.turnNumber} — ${currentShift.employeeName}</div></div>
                 <div class="summary-item"><div class="label">Fondo Inicial</div><div class="value">${formatMoney(currentShift.openingCash)}</div></div>
                 <div class="summary-item"><div class="label">Ventas Totales</div><div class="value">${formatMoney(totalSales)}</div></div>
+                <div class="summary-item"><div class="label">Ventas en Efectivo</div><div class="value">${formatMoney(cashSales)}</div></div>
                 <div class="summary-item"><div class="label">Ventas por Transferencia</div><div class="value">${formatMoney(transferSales)}</div></div>
-                <div class="summary-item"><div class="label">Efectivo Esperado</div><div class="value">${formatMoney(expected)}</div></div>
+                <div class="summary-item"><div class="label">Efectivo Caja</div><div class="value">${formatMoney(expected)}</div></div>
             `;
             document.getElementById('countedCashInput').value = '';
             document.getElementById('shiftDifference').innerText = '$0.00';
@@ -785,6 +834,67 @@
             alert("Cuadre de caja registrado con éxito");
         }
 
+        // ============ HISTORIAL DE PAGOS (BITÁCORA INDEPENDIENTE) ============
+        // Registra cada pago de cada turno. Es una bitácora aparte: eliminar un
+        // registro aquí no afecta las cifras reales de caja/ventas ni salesLog/shiftHistory.
+        function registerPaymentLogEntry(saleRecord, dateObj) {
+            paymentsLog.push({
+                id: saleRecord.id,
+                turnNumber: currentShift ? currentShift.turnNumber : '-',
+                employeeName: currentShift ? currentShift.employeeName : '-',
+                date: dateObj.toLocaleDateString(),
+                time: dateObj.toLocaleTimeString(),
+                client: saleRecord.client,
+                total: saleRecord.total
+            });
+            localStorage.setItem('paymentsLog', JSON.stringify(paymentsLog));
+        }
+        function openPaymentsHistoryModal() {
+            renderPaymentsHistoryList();
+            document.getElementById('paymentsHistoryModal').classList.add('active');
+        }
+        function closePaymentsHistoryModal() {
+            document.getElementById('paymentsHistoryModal').classList.remove('active');
+        }
+        function renderPaymentsHistoryList() {
+            const box = document.getElementById('paymentsHistoryList');
+            if (!box) return;
+            if (paymentsLog.length === 0) {
+                box.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px 0;">Aún no hay pagos registrados.</p>';
+                return;
+            }
+            box.innerHTML = [...paymentsLog].reverse().map(p => `
+                <div class="payment-log-row">
+                    <div>
+                        <div><b>Turno ${p.turnNumber}</b> — ${p.employeeName}</div>
+                        <div style="font-size:0.78rem; color:var(--text-muted);">${p.date} · ${p.time} · ${p.client}</div>
+                        <div style="font-weight:700; margin-top:2px;">${formatMoney(p.total)}</div>
+                    </div>
+                    <div class="payment-log-actions">
+                        <button class="btn btn-outline btn-sm" onclick="copyPaymentLogEntry(${p.id})">Copiar</button>
+                        <button class="btn btn-danger btn-sm" onclick="deletePaymentLogEntry(${p.id})">Eliminar</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        function copyPaymentLogEntry(id) {
+            const p = paymentsLog.find(x => x.id === id);
+            if (!p) return;
+            const text = `Turno: ${p.turnNumber}\nDependiente: ${p.employeeName}\nFecha: ${p.date}\nHora: ${p.time}\nCliente: ${p.client}\nTotal: ${formatMoney(p.total)}`;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => showToast('Copiado al portapapeles', 'success')).catch(() => alert(text));
+            } else {
+                alert(text);
+            }
+        }
+        function deletePaymentLogEntry(id) {
+            showConfirm("¿Eliminar este registro del historial de pagos? Esto no afecta las cifras reales de caja/ventas.", () => {
+                paymentsLog = paymentsLog.filter(p => p.id !== id);
+                localStorage.setItem('paymentsLog', JSON.stringify(paymentsLog));
+                renderPaymentsHistoryList();
+            });
+        }
+
         function deleteShiftRecord(index) {
             showConfirm("¿Deseas eliminar este registro de cuadre?", () => {
                 shiftHistory.splice(index, 1);
@@ -794,17 +904,28 @@
         }
 
         // ============ REPORTES ============
+        // "Productos Más Vendidos" usa un contador independiente (statsTally),
+        // separado del historial real de ventas/caja, para poder restablecerse
+        // sin afectar ninguna cifra real.
+        function registerStatsTally(saleRecord) {
+            saleRecord.items.forEach(i => {
+                if (!statsTally[i.name]) statsTally[i.name] = { qty: 0, revenue: 0 };
+                statsTally[i.name].qty += i.qty;
+                statsTally[i.name].revenue += i.price * i.qty;
+            });
+            localStorage.setItem('statsTally', JSON.stringify(statsTally));
+        }
+        function resetTopSellingStats() {
+            showConfirm("¿Restablecer el ranking de Productos Más Vendidos? Esto no afecta tus ventas reales ni las cifras de caja.", () => {
+                statsTally = {};
+                localStorage.setItem('statsTally', JSON.stringify(statsTally));
+                renderReportsView();
+                showToast('Estadísticas restablecidas', 'success');
+            });
+        }
         function renderReportsView() {
             const box = document.getElementById('topSellingChart');
-            const tally = {};
-            [...salesLog, ...shiftHistory.flatMap(s => s.details || [])].forEach(sale => {
-                sale.items.forEach(i => {
-                    if (!tally[i.name]) tally[i.name] = { qty: 0, revenue: 0 };
-                    tally[i.name].qty += i.qty;
-                    tally[i.name].revenue += i.price * i.qty;
-                });
-            });
-            const arr = Object.entries(tally).map(([name, v]) => ({ name, ...v })).sort((a, b) => b.qty - a.qty).slice(0, 10);
+            const arr = Object.entries(statsTally).map(([name, v]) => ({ name, ...v })).sort((a, b) => b.qty - a.qty).slice(0, 10);
             if (arr.length === 0) {
                 box.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem;">Aún no hay ventas registradas.</p>';
                 return;
@@ -1013,6 +1134,7 @@
             toggleTheme(savedTheme);
             document.getElementById('cfg-currency').value = currencySettings.code;
             document.getElementById('cfg-lowstock').value = lowStockThreshold;
+            document.getElementById('cfg-turnmode').value = turnNumberMode;
             document.getElementById('cfg-categories').value = categories.join(', ');
             document.getElementById('cfg-slogan').value = receiptSettings.slogan;
             document.getElementById('cfg-footer').value = receiptSettings.footer;
@@ -1024,4 +1146,45 @@
                 applyRoleRestrictions();
             }
             renderAll();
+            setupAndroidBackButton();
         })();
+
+        // ============ BOTÓN/GESTO "ATRÁS" DE ANDROID (INTELIGENTE) ============
+        // Si hay una ventana/modal abierto, "Atrás" la cierra primero.
+        // Para salir de la app hay que presionarlo 2 veces seguidas.
+        // Requiere el plugin @capacitor/app (ya incluido en package.json).
+        let backPressedOnce = false;
+        function isNativeAppPluginAvailable() {
+            return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()
+                && window.Capacitor.Plugins && window.Capacitor.Plugins.App);
+        }
+        function closeTopMostModal() {
+            const modalCloseMap = [
+                ['confirmModal', closeConfirm],
+                ['scannerModal', closeCameraScanner],
+                ['printerPairModal', closePrinterPairModal],
+                ['paymentsHistoryModal', closePaymentsHistoryModal],
+                ['expenseModal', closeExpenseModal],
+                ['openShiftModal', () => document.getElementById('openShiftModal').classList.remove('active')],
+                ['closeShiftModal', () => document.getElementById('closeShiftModal').classList.remove('active')],
+                ['checkoutModal', requestCloseCheckout]
+            ];
+            for (const [id, closer] of modalCloseMap) {
+                const el = document.getElementById(id);
+                if (el && el.classList.contains('active')) { closer(); return true; }
+            }
+            return false;
+        }
+        function setupAndroidBackButton() {
+            if (!isNativeAppPluginAvailable()) return;
+            window.Capacitor.Plugins.App.addListener('backButton', () => {
+                if (closeTopMostModal()) return;
+                if (backPressedOnce) {
+                    window.Capacitor.Plugins.App.exitApp();
+                    return;
+                }
+                backPressedOnce = true;
+                showToast('Toca de nuevo para salir', 'info', 2000);
+                setTimeout(() => { backPressedOnce = false; }, 2000);
+            });
+        }

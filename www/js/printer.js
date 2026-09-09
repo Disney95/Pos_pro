@@ -193,7 +193,7 @@ function buildTicketText(saleRecord, receiptSettings, formatMoneyFn, width) {
     lines.push(padLine('Subtotal:', formatMoneyFn(saleRecord.subtotal), width));
     lines.push(padLine('Descuento:', '-' + formatMoneyFn(saleRecord.discount), width));
     lines.push(padLine('TOTAL:', formatMoneyFn(saleRecord.total), width));
-    if (saleRecord.method === 'Efectivo') {
+    if (saleRecord.cashReceived != null && saleRecord.change != null) {
         lines.push(padLine('Recibido:', formatMoneyFn(saleRecord.cashReceived), width));
         lines.push(padLine('Cambio:', formatMoneyFn(saleRecord.change), width));
     }
