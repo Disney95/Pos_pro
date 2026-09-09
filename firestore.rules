@@ -1,0 +1,34 @@
+rules_version = '2';
+
+// Reglas de seguridad para la colección "licenses" del sistema de licencias.
+// Cópialas en Firebase Console → Firestore Database → Reglas, y publica.
+//
+// Qué permiten:
+//  - Leer una licencia: solo si el cliente está autenticado (incluye autenticación anónima).
+//  - Vincular un dispositivo por primera vez (cuando boundDeviceId todavía es null).
+//  - Actualizar SOLO "lastCheckAt" en cada verificación periódica, sin poder tocar
+//    "status", "expiresAt" ni volver a cambiar el dispositivo ya vinculado.
+//  - "status", "expiresAt" y liberar un dispositivo (poner boundDeviceId en null) solo
+//    se pueden cambiar desde la consola de Firebase (con permisos de administrador),
+//    nunca desde la app.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /licenses/{licenseKey} {
+      allow read: if request.auth != null;
+
+      allow update: if request.auth != null && (
+        // Primera activación: el dispositivo estaba libre (null) y se vincula ahora.
+        (resource.data.boundDeviceId == null
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['boundDeviceId', 'boundDeviceModel', 'activatedAt', 'expiresAt', 'lastCheckAt']))
+        ||
+        // Verificación periódica: el dispositivo ya vinculado solo puede refrescar la fecha de chequeo.
+        (resource.data.boundDeviceId == request.resource.data.boundDeviceId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastCheckAt']))
+      );
+
+      allow create: if false; // Las licencias se crean manualmente desde la consola de Firebase.
+      allow delete: if false;
+    }
+  }
+}
