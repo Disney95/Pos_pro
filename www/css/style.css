@@ -28,7 +28,7 @@
         body.dark-theme .card-panel > h3,
         body.dark-theme .checkout-header h3,
         body.dark-theme .generic-modal-header h3,
-        body.dark-theme .settings-header {
+        body.dark-theme .settings-subpage-header h3 {
             background: var(--title-chip-bg);
             border-radius: 14px;
             padding: 10px 14px;
@@ -44,57 +44,60 @@
         body.dark-theme nav { background: var(--bg-primary); }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+        html { font-size: 14px; } /* Reduce el tamaño de letra en toda la app de forma proporcional */
         body { background-color: var(--bg-primary); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-        header { background: var(--bg-card); color: var(--text-main); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; border-bottom: 1px solid var(--border-color); }
-        header .user-chip { font-size: 0.8rem; background: var(--chip-bg); color: var(--text-main); border: 1px solid var(--border-color); padding: 4px 10px; border-radius: 12px; display: flex; align-items: center; gap: 8px; }
+        header { background: var(--bg-card); color: var(--text-main); padding: 6px 12px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        header h2 { font-size: 1.05rem; }
+        header .user-chip { font-size: 0.75rem; background: var(--chip-bg); color: var(--text-main); border: 1px solid var(--border-color); padding: 3px 9px; border-radius: 12px; display: flex; align-items: center; gap: 6px; }
         header .header-exit-btn { background: var(--chip-bg); color: var(--text-main); border-color: var(--border-color); }
-        header .app-version { display: block; font-size: 0.68rem; font-weight: normal; color: var(--text-muted); margin-top: 2px; }
+        header .app-version { display: block; font-size: 0.62rem; font-weight: normal; color: var(--text-muted); margin-top: 1px; }
 
-        nav { display: flex; gap: 8px; background: var(--bg-card); padding: 8px; border-bottom: 1px solid var(--border-color); overflow-x: auto; flex-shrink: 0; }
-        nav button { padding: 8px 16px; border: none; background: transparent; color: var(--text-main); font-weight: bold; cursor: pointer; border-radius: 4px; white-space: nowrap; }
-        nav button.active { background: var(--accent-color); color: white; }
+        /* BARRA DE NAVEGACIÓN INFERIOR, CON ÍCONOS (order:99 la deja siempre al final del layout flex) */
+        nav { order: 99; display: flex; justify-content: space-around; align-items: stretch; background: var(--bg-card); padding: 4px 2px; flex-shrink: 0; }
+        .nav-tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 6px 2px; border: none; background: transparent; color: var(--text-muted); font-size: 0.62rem; font-weight: 600; cursor: pointer; }
+        .nav-tab-btn.active { color: var(--accent-color); }
 
         #offline-banner { display: none; background: var(--warning-color); color: white; text-align: center; padding: 6px; font-size: 0.8rem; font-weight: bold; flex-shrink: 0; }
         #offline-banner.show { display: block; }
 
-        .view-section { display: none; flex: 1; overflow: auto; padding: 16px; position: relative; }
+        .view-section { display: none; flex: 1; overflow: auto; padding: 14px; position: relative; }
         .view-section.active { display: flex; }
 
         /* VISTA POS / CATÁLOGO */
         #pos-view { flex-direction: column; height: 100%; position: relative; padding: 0; }
-        .pos-toolbar { padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; background: var(--bg-card); border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+        .pos-toolbar { padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; background: var(--bg-card); flex-shrink: 0; }
         .search-row { display: flex; gap: 8px; }
-        .search-row input { flex: 1; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-primary); color: var(--text-main); font-size: 0.95rem; }
-        .btn-icon-scan { width: 42px; height: 42px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-main); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+        .search-row input { flex: 1; padding: 8px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-primary); color: var(--text-main); font-size: 0.9rem; }
+        .btn-icon-scan { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-main); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
         .category-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
-        .category-chip { padding: 6px 14px; border-radius: 16px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-main); font-size: 0.8rem; font-weight: 600; white-space: nowrap; cursor: pointer; }
+        .category-chip { padding: 5px 13px; border-radius: 16px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-main); font-size: 0.78rem; font-weight: 600; white-space: nowrap; cursor: pointer; }
         .category-chip.active { background: var(--accent-color); color: white; border-color: var(--accent-color); }
 
-        .catalog-container { flex: 1; overflow-y: auto; padding: 16px; }
-        .grid-products { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
+        .catalog-container { flex: 1; overflow-y: auto; padding: 12px; }
+        .grid-products { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
 
         /* RECUADRO DE PRODUCTO Y STOCK ABAJO A LA DERECHA */
         .product-card {
             position: relative;
-            border-radius: 10px;
+            border-radius: 14px;
             padding: 12px;
-            min-height: 95px;
+            min-height: 88px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             cursor: pointer;
             transition: transform 0.1s;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            border: 2px solid var(--border-color);
+            border: none;
             user-select: none;
         }
         .product-card:active { transform: scale(0.96); }
-        .product-card.stock-low { border-color: var(--warning-color); box-shadow: 0 0 0 2px rgba(245,124,0,0.35); }
-        .product-card.stock-out { border-color: var(--danger-color); opacity: 0.55; cursor: not-allowed; }
-        .product-title { font-weight: bold; font-size: 0.95rem; line-height: 1.2; }
-        .product-category-label { font-size: 0.65rem; text-transform: uppercase; font-weight: 700; margin-bottom: 2px; }
-        .product-price { font-weight: bold; font-size: 0.9rem; margin-top: 4px; }
+        .product-card.stock-low { box-shadow: 0 0 0 2px var(--warning-color); }
+        .product-card.stock-out { box-shadow: 0 0 0 2px var(--danger-color); opacity: 0.55; cursor: not-allowed; }
+        .product-title { font-weight: bold; font-size: 0.92rem; line-height: 1.2; }
+        .product-category-label { font-size: 0.62rem; text-transform: uppercase; font-weight: 700; margin-bottom: 2px; }
+        .product-price { font-weight: bold; font-size: 0.88rem; margin-top: 4px; }
         /* El texto de la tarjeta siempre se fuerza a negro, sin importar el color de fondo ni el tema */
         .product-card .product-category-label,
         .product-card .product-title,
@@ -103,24 +106,21 @@
         }
         .product-stock-tag {
             position: absolute;
-            bottom: 6px;
-            right: 8px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            background: rgba(0,0,0,0.08);
-            padding: 2px 6px;
-            border-radius: 4px;
-            color: #444;
+            bottom: 8px;
+            right: 10px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: rgba(0,0,0,0.55);
         }
-        .product-stock-tag.tag-low { background: var(--warning-color); color: white; }
-        .product-stock-tag.tag-out { background: var(--danger-color); color: white; }
+        .product-stock-tag.tag-low { color: var(--warning-color); }
+        .product-stock-tag.tag-out { color: var(--danger-color); }
 
         /* BOTÓN FLOTANTE DEL CARRITO DE COMPRAS */
         .floating-cart-btn {
             display: none;
             position: fixed;
-            bottom: 24px;
-            right: 24px;
+            bottom: 78px;
+            right: 20px;
             width: 60px;
             height: 60px;
             background: var(--success-color);
@@ -211,10 +211,10 @@
         .change-amount.positive { color: var(--success-color); }
 
         /* OTROS PANELES */
-        .card-panel { background: var(--bg-card); border-radius: 8px; padding: 16px; border: 1px solid var(--border-color); width: 100%; margin-bottom: 16px; }
+        .card-panel { background: var(--bg-card); border-radius: 14px; padding: 16px; border: none; box-shadow: 0 1px 5px rgba(0,0,0,0.08); width: 100%; margin-bottom: 14px; }
         .form-group { margin-bottom: 12px; }
         .form-group label { display: block; margin-bottom: 4px; font-weight: bold; font-size: 0.9rem; }
-        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-main); }
+        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-card); color: var(--text-main); }
 
         /* TABLAS CON SCROLL HORIZONTAL PROPIO (no empujan ni cortan el resto de la pantalla) */
         .table-scroll-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -224,13 +224,13 @@
         th, td { border: 1px solid var(--border-color); padding: 8px; text-align: left; font-size: 0.85rem; }
         th { background: rgba(0,0,0,0.05); }
 
-        .btn { padding: 10px 16px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn { padding: 10px 16px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; }
         .btn-primary { background: var(--accent-color); color: white; }
         .btn-danger { background: var(--danger-color); color: white; }
         .btn-success { background: var(--success-color); color: white; }
         .btn-outline { background: transparent; border: 1px solid var(--border-color); color: var(--text-main); }
         .btn-block { width: 100%; }
-        .btn-sm { padding: 4px 8px; font-size: 0.8rem; }
+        .btn-sm { padding: 4px 8px; font-size: 0.8rem; border-radius: 8px; }
 
         .locked-msg { text-align: center; color: var(--text-muted); padding: 40px 16px; }
         .admin-only { }
@@ -327,36 +327,34 @@
         .toast.toast-error { border-color: var(--danger-color); }
         .toast .toast-icon { font-size: 1rem; flex-shrink: 0; }
 
-        /* ============ ACORDEÓN DE AJUSTES ============ */
-        .settings-accordion .card-panel { padding: 0; overflow: hidden; }
-        .settings-header {
+        /* ============ AJUSTES: LISTA + PÁGINAS COMPLETAS POR SECCIÓN ============ */
+        .settings-list-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 16px;
+            padding: 15px 16px;
+            background: var(--bg-card);
+            border-radius: 14px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.08);
             cursor: pointer;
             user-select: none;
-            border-radius: 8px;
         }
-        .settings-header h3 { margin: 0; }
-        .settings-header .chevron {
-            font-size: 0.9rem;
-            color: var(--text-muted);
-            transition: transform 0.2s ease;
-            flex-shrink: 0;
-            margin-left: 10px;
+        .settings-list-row h3 { font-size: 0.92rem; font-weight: 700; }
+        .settings-list-row .chevron-right { font-size: 1.3rem; color: var(--text-muted); flex-shrink: 0; margin-left: 10px; }
+        .settings-subpage {
+            display: none;
+            flex-direction: column;
+            flex: 1;
+            overflow-y: auto;
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--bg-primary);
         }
-        .settings-accordion .card-panel.open .settings-header .chevron { transform: rotate(180deg); }
-        .settings-body {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.25s ease;
-            padding: 0 16px;
-        }
-        .settings-accordion .card-panel.open .settings-body {
-            max-height: 2000px;
-            padding: 0 16px 16px 16px;
-        }
+        .settings-subpage-header { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--bg-card); flex-shrink: 0; }
+        .settings-subpage-header h3 { font-size: 0.98rem; }
+        .settings-back-btn { background: transparent; border: none; color: var(--accent-color); font-weight: 700; font-size: 0.92rem; cursor: pointer; padding: 4px 0; flex-shrink: 0; }
+        .settings-subpage-body { padding: 16px; flex: 1; overflow-y: auto; }
 
         /* ============ IMPRESORA TÉRMICA BLUETOOTH (ESC/POS) ============ */
         .printer-status-row { display: flex; align-items: center; gap: 8px; padding: 10px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 10px; font-size: 0.85rem; }
