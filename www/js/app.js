@@ -30,7 +30,7 @@
         let systemThemeListenerAdded = false;
         let turnNumberMode = localStorage.getItem('turnNumberMode') || 'manual';
         let paymentsLog = JSON.parse(localStorage.getItem('paymentsLog')) || [];
-        const APP_VERSION = '1.3.0'; // Debe coincidir con "version" en package.json
+        const APP_VERSION = '1.4.0'; // Debe coincidir con "version" en package.json
 
         // Paleta propia de 12 tonos suaves (ni chillones ni apagados) para las tarjetas de producto
         const PRODUCT_COLOR_PALETTE = [
@@ -128,38 +128,31 @@
         }
 
         // ============ NAVEGACIÓN ============
-        // ============ ACORDEÓN DE AJUSTES ============
-        // Cada encabezado de sección se muestra solo (colapsado); al tocarlo
-        // se despliegan sus opciones. Toca de nuevo para volver a ocultarlas.
-        function setSettingsSectionOpen(panel, open) {
-            const body = panel.querySelector('.settings-body');
-            panel.classList.toggle('open', open);
-            if (!body) return;
-            if (open) {
-                // Se mide la altura real del contenido (en vez de usar un max-height
-                // fijo y sobredimensionado) para que el acordeón nunca corte
-                // opciones ni bloquee el scroll hacia los encabezados siguientes.
-                body.style.maxHeight = body.scrollHeight + 'px';
-            } else {
-                body.style.maxHeight = '0px';
-            }
+        // ============ PÁGINAS DE AJUSTES ============
+        // Cada sección de Ajustes es ahora una página propia: se abre a pantalla
+        // completa al tocar su fila en la lista, con un botón "‹ Ajustes" para volver.
+        function openSettingsPage(key) {
+            const list = document.getElementById('settingsMainList');
+            if (list) list.style.display = 'none';
+            document.querySelectorAll('.settings-subpage').forEach(p => p.style.display = 'none');
+            const page = document.getElementById('settingsPage-' + key);
+            if (page) page.style.display = 'flex';
         }
-
-        function toggleSettingsSection(headerEl) {
-            const panel = headerEl.closest('.card-panel');
-            if (!panel) return;
-            const wasOpen = panel.classList.contains('open');
-            panel.parentElement.querySelectorAll('.card-panel.open').forEach(p => {
-                if (p !== panel) setSettingsSectionOpen(p, false);
-            });
-            setSettingsSectionOpen(panel, !wasOpen);
+        function closeSettingsPage() {
+            document.querySelectorAll('.settings-subpage').forEach(p => p.style.display = 'none');
+            const list = document.getElementById('settingsMainList');
+            if (list) list.style.display = 'block';
+        }
+        function isSettingsSubpageOpen() {
+            return !!document.querySelector('.settings-subpage[style*="flex"]');
         }
 
         function switchTab(viewId, btn) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-tab-btn').forEach(el => el.classList.remove('active'));
             document.getElementById(viewId).classList.add('active');
             btn.classList.add('active');
+            if (viewId === 'settings-view') closeSettingsPage();
             if (btn.scrollIntoView) {
                 btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
             }
@@ -211,7 +204,9 @@
             if (!prod) { playBeep(220, 200); return alert("Código no encontrado: " + code); }
             addToCart(prod.id);
         }
-        function openCameraScanner() {
+        let scannerCallback = null; // función a la que se le entrega el código leído (POS o Inventario)
+        function openCameraScanner(onScanned) {
+            scannerCallback = onScanned || ((code) => handleBarcodeInput(code));
             document.getElementById('scannerModal').classList.add('active');
             if (typeof Html5Qrcode === 'undefined') {
                 document.getElementById('barcodeScannerBox').innerHTML = '<p style="text-align:center; color:var(--text-muted);">La librería de cámara no está disponible sin conexión a internet.</p>';
@@ -221,9 +216,16 @@
             html5QrScanner.start(
                 { facingMode: "environment" },
                 { fps: 10, qrbox: 220 },
-                (decodedText) => { handleBarcodeInput(decodedText); closeCameraScanner(); },
+                (decodedText) => {
+                    const cb = scannerCallback;
+                    closeCameraScanner();
+                    if (cb) cb(decodedText);
+                },
                 () => {}
-            ).catch((err) => {
+            ).then(() => {
+                // Enciende la linterna automáticamente para facilitar el escaneo en poca luz
+                html5QrScanner.applyVideoConstraints({ advanced: [{ torch: true }] }).catch(() => {});
+            }).catch((err) => {
                 const msg = (err && err.name === 'NotAllowedError')
                     ? 'Permiso de cámara denegado. Ve a Ajustes del sistema &gt; Apps &gt; POS Professional &gt; Permisos, y activa la Cámara.'
                     : (err && err.name === 'NotFoundError')
@@ -235,9 +237,11 @@
         function closeCameraScanner() {
             document.getElementById('scannerModal').classList.remove('active');
             if (html5QrScanner) {
+                html5QrScanner.applyVideoConstraints({ advanced: [{ torch: false }] }).catch(() => {});
                 html5QrScanner.stop().catch(() => {});
                 html5QrScanner = null;
             }
+            scannerCallback = null;
         }
 
         // ============ DIBUJAR CATÁLOGO PRINCIPAL ============
@@ -535,10 +539,6 @@
                 <div style="border-bottom:1px dashed #999; margin:6px 0;"></div>
                 <div style="text-align:center;">${footer}</div>
             `;
-            const panel = box.closest('.card-panel');
-            if (panel && panel.classList.contains('open')) {
-                setSettingsSectionOpen(panel, true);
-            }
         }
 
         // ============ INVENTARIO (SOLO ADMIN) ============
@@ -560,7 +560,13 @@
                             <div class="form-group"><label>Categoría</label>
                                 <select id="prod-category">${categories.map(c => `<option value="${c}">${c}</option>`).join('')}</select>
                             </div>
-                            <div class="form-group"><label>Código de Barras</label><input type="text" id="prod-barcode" placeholder="Opcional"></div>
+                            <div class="form-group">
+                                <label>Código de Barras</label>
+                                <div style="display:flex; gap:8px;">
+                                    <input type="text" id="prod-barcode" placeholder="Opcional" style="flex:1;">
+                                    <button type="button" class="btn-icon-scan" title="Escanear con cámara" onclick="openCameraScanner((code) => { document.getElementById('prod-barcode').value = code; })">📷</button>
+                                </div>
+                            </div>
                             <div class="form-group">
                                 <label>Color del Recuadro</label>
                                 <input type="hidden" id="prod-color" value="${PRODUCT_COLOR_PALETTE[0]}">
@@ -1165,6 +1171,7 @@
                 && window.Capacitor.Plugins && window.Capacitor.Plugins.App);
         }
         function closeTopMostModal() {
+            if (isSettingsSubpageOpen()) { closeSettingsPage(); return true; }
             const modalCloseMap = [
                 ['confirmModal', closeConfirm],
                 ['scannerModal', closeCameraScanner],
