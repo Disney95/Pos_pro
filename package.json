@@ -1,6 +1,6 @@
 {
   "name": "pos-pro",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "POS Pro - Punto de venta con inventario, caja, roles y reportes",
   "scripts": {
     "build": "echo 'No build step - static HTML in www/' ",
