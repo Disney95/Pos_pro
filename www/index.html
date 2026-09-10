@@ -156,11 +156,26 @@
     <div id="offline-banner">⚠ Sin conexión — las ventas se guardan localmente y se sincronizarán automáticamente</div>
 
     <nav id="mainNav">
-        <button class="active" data-view="pos-view" onclick="switchTab('pos-view', this)">Venta (POS)</button>
-        <button data-view="inventory-view" onclick="switchTab('inventory-view', this)">Inventario</button>
-        <button data-view="cash-view" onclick="switchTab('cash-view', this)">Caja</button>
-        <button data-view="reports-view" onclick="switchTab('reports-view', this)">Reportes</button>
-        <button data-view="settings-view" onclick="switchTab('settings-view', this)">Ajustes</button>
+        <button class="nav-tab-btn active" data-view="pos-view" onclick="switchTab('pos-view', this)">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="19" cy="21" r="1"></circle><path d="M2.5 3h2l2.6 12.4a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 2-1.6L21.5 8H6"></path></svg>
+            <span>Venta</span>
+        </button>
+        <button class="nav-tab-btn" data-view="inventory-view" onclick="switchTab('inventory-view', this)">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8"></path><path d="M2.5 5.5 4 3h16l1.5 2.5v3h-19z"></path><path d="M10 12h4"></path></svg>
+            <span>Inventario</span>
+        </button>
+        <button class="nav-tab-btn" data-view="cash-view" onclick="switchTab('cash-view', this)">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2.5"></circle><path d="M6 6v0M18 18v0"></path></svg>
+            <span>Caja</span>
+        </button>
+        <button class="nav-tab-btn" data-view="reports-view" onclick="switchTab('reports-view', this)">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><rect x="7" y="12" width="3" height="6"></rect><rect x="13" y="8" width="3" height="10"></rect><rect x="19" y="5" width="0" height="13"></rect></svg>
+            <span>Reportes</span>
+        </button>
+        <button class="nav-tab-btn" data-view="settings-view" onclick="switchTab('settings-view', this)">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            <span>Ajustes</span>
+        </button>
     </nav>
 
     <!-- 1. VISTA DE SELECCIÓN DE PRODUCTOS (CATÁLOGO) -->
@@ -287,14 +302,38 @@
     </div>
 
     <!-- 5. AJUSTES (ACORDEÓN: CADA ENCABEZADO SE TOCA PARA MOSTRAR SUS OPCIONES) -->
-    <div id="settings-view" class="view-section settings-accordion" style="flex-direction: column;">
+    <div id="settings-view" class="view-section" style="flex-direction: column; padding: 0;">
 
-        <div class="card-panel">
-            <div class="settings-header" onclick="toggleSettingsSection(this)">
-                <h3>Configuración del Comprobante</h3>
-                <span class="chevron">▼</span>
+        <div id="settingsMainList" style="padding:16px;">
+            <div class="settings-list-row" onclick="openSettingsPage('comprobante')">
+                <h3>Configuración del Comprobante</h3><span class="chevron-right">›</span>
             </div>
-            <div class="settings-body">
+            <div class="settings-list-row" onclick="openSettingsPage('preview')">
+                <h3>Vista Previa del Comprobante</h3><span class="chevron-right">›</span>
+            </div>
+            <div class="settings-list-row" onclick="openSettingsPage('printer')">
+                <h3>Impresora Térmica (Bluetooth ESC/POS)</h3><span class="chevron-right">›</span>
+            </div>
+            <div class="settings-list-row" onclick="openSettingsPage('general')">
+                <h3>Ajustes Generales</h3><span class="chevron-right">›</span>
+            </div>
+            <div class="settings-list-row" onclick="openSettingsPage('backup')">
+                <h3>Copia de Seguridad</h3><span class="chevron-right">›</span>
+            </div>
+            <div class="settings-list-row" onclick="openSettingsPage('firebase')">
+                <h3>Sincronización con Firebase (opcional, avanzado)</h3><span class="chevron-right">›</span>
+            </div>
+            <div class="settings-list-row" onclick="openSettingsPage('users')">
+                <h3>Usuarios y Contraseñas</h3><span class="chevron-right">›</span>
+            </div>
+        </div>
+
+        <div class="settings-subpage" id="settingsPage-comprobante">
+            <div class="settings-subpage-header">
+                <button class="settings-back-btn" onclick="closeSettingsPage()">‹ Ajustes</button>
+                <h3>Configuración del Comprobante</h3>
+            </div>
+            <div class="settings-subpage-body">
                 <div class="form-group"><label>Slogan / Subtítulo</label><input type="text" id="cfg-slogan" value="¡Gracias por su compra!" oninput="updateReceiptPreview()"></div>
                 <div class="form-group"><label>Mensaje de Despedida</label><input type="text" id="cfg-footer" value="¡Vuelva pronto!" oninput="updateReceiptPreview()"></div>
                 <div class="form-group"><label>URL del Logo (Opcional)</label><input type="text" id="cfg-logo" placeholder="https://dominio.com/logo.png" oninput="updateReceiptPreview()"></div>
@@ -302,22 +341,22 @@
             </div>
         </div>
 
-        <div class="card-panel">
-            <div class="settings-header" onclick="toggleSettingsSection(this)">
+        <div class="settings-subpage" id="settingsPage-preview">
+            <div class="settings-subpage-header">
+                <button class="settings-back-btn" onclick="closeSettingsPage()">‹ Ajustes</button>
                 <h3>Vista Previa del Comprobante</h3>
-                <span class="chevron">▼</span>
             </div>
-            <div class="settings-body">
+            <div class="settings-subpage-body">
                 <div id="receiptPreviewBox" style="max-width:300px; margin:10px auto 0; background:#ffffff; color:#1a1a1a; font-family:monospace; font-size:12px; padding:14px; border:1px solid var(--border-color); border-radius:6px; line-height:1.5;"></div>
             </div>
         </div>
 
-        <div class="card-panel">
-            <div class="settings-header" onclick="toggleSettingsSection(this)">
+        <div class="settings-subpage" id="settingsPage-printer">
+            <div class="settings-subpage-header">
+                <button class="settings-back-btn" onclick="closeSettingsPage()">‹ Ajustes</button>
                 <h3>Impresora Térmica (Bluetooth ESC/POS)</h3>
-                <span class="chevron">▼</span>
             </div>
-            <div class="settings-body">
+            <div class="settings-subpage-body">
                 <div class="printer-status-row">
                     <div class="printer-status-dot" id="printerStatusDot"></div>
                     <span id="printerStatusText">Sin impresora configurada</span>
@@ -331,12 +370,12 @@
             </div>
         </div>
 
-        <div class="card-panel">
-            <div class="settings-header" onclick="toggleSettingsSection(this)">
+        <div class="settings-subpage" id="settingsPage-general">
+            <div class="settings-subpage-header">
+                <button class="settings-back-btn" onclick="closeSettingsPage()">‹ Ajustes</button>
                 <h3>Ajustes Generales</h3>
-                <span class="chevron">▼</span>
             </div>
-            <div class="settings-body">
+            <div class="settings-subpage-body">
                 <div class="form-group">
                     <label>Moneda</label>
                     <select id="cfg-currency" onchange="saveCurrency(this.value)">
@@ -375,12 +414,12 @@
             </div>
         </div>
 
-        <div class="card-panel">
-            <div class="settings-header" onclick="toggleSettingsSection(this)">
+        <div class="settings-subpage" id="settingsPage-backup">
+            <div class="settings-subpage-header">
+                <button class="settings-back-btn" onclick="closeSettingsPage()">‹ Ajustes</button>
                 <h3>Copia de Seguridad</h3>
-                <span class="chevron">▼</span>
             </div>
-            <div class="settings-body">
+            <div class="settings-subpage-body">
                 <p style="font-size:0.75rem; color:var(--text-muted);">Descarga un archivo con todos tus datos (productos, ventas, historial, ajustes) y guárdalo donde quieras — incluyendo Google Drive.</p>
                 <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;">
                     <button class="btn btn-success" onclick="downloadFullBackup()">Descargar Respaldo Completo</button>
@@ -391,12 +430,12 @@
             </div>
         </div>
 
-        <div class="card-panel">
-            <div class="settings-header" onclick="toggleSettingsSection(this)">
+        <div class="settings-subpage" id="settingsPage-firebase">
+            <div class="settings-subpage-header">
+                <button class="settings-back-btn" onclick="closeSettingsPage()">‹ Ajustes</button>
                 <h3>Sincronización con Firebase (opcional, avanzado)</h3>
-                <span class="chevron">▼</span>
             </div>
-            <div class="settings-body">
+            <div class="settings-subpage-body">
                 <p style="font-size:0.75rem; color:var(--text-muted);">Requiere configurar tus propias credenciales de Firebase en el código.</p>
                 <div class="form-group" style="margin-top:8px; display:flex; flex-direction:column; gap:8px; align-items:flex-start;">
                     <button class="btn btn-primary" onclick="syncCloud()">Sincronizar con Firebase</button>
@@ -406,12 +445,12 @@
             </div>
         </div>
 
-        <div class="card-panel">
-            <div class="settings-header" onclick="toggleSettingsSection(this)">
+        <div class="settings-subpage" id="settingsPage-users">
+            <div class="settings-subpage-header">
+                <button class="settings-back-btn" onclick="closeSettingsPage()">‹ Ajustes</button>
                 <h3>Usuarios y Contraseñas</h3>
-                <span class="chevron">▼</span>
             </div>
-            <div class="settings-body">
+            <div class="settings-subpage-body">
                 <div class="form-group"><label>Nueva contraseña de Administrador</label><input type="password" id="cfg-adminpass" placeholder="Dejar en blanco para no cambiar"></div>
                 <div class="form-group"><label>Nueva contraseña de Cajero</label><input type="password" id="cfg-cajeropass" placeholder="Dejar en blanco para no cambiar"></div>
                 <button class="btn btn-primary" onclick="savePasswords()">Actualizar Contraseñas</button>
