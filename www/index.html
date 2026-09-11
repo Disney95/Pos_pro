@@ -253,7 +253,7 @@
 
     <!-- 3. CAJA -->
     <div id="cash-view" class="view-section" style="flex-direction: column;">
-        <button class="payments-history-btn" title="Historial de pagos" onclick="openPaymentsHistoryModal()">
+        <button class="payments-history-btn" id="paymentsHistoryBtn" title="Historial de pagos" onclick="openPaymentsHistoryModal()">
             <svg viewBox="0 0 48 48" width="21" height="21" fill="none">
                 <path d="M24 6 A18 18 0 1 1 6.9 16.6" stroke="currentColor" stroke-width="5" stroke-linecap="round" fill="none"></path>
                 <circle cx="8.6" cy="11.2" r="2.4" fill="currentColor"></circle>
@@ -266,7 +266,7 @@
         <div class="card-panel">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h3>Gastos / Retiros del Turno</h3>
-                <button class="btn btn-primary btn-sm" onclick="openExpenseModal()">+ Agregar</button>
+                <button class="btn btn-primary btn-sm" id="addExpenseBtn" onclick="openExpenseModal()">+ Agregar</button>
             </div>
             <div class="table-scroll-wrap">
                 <table>

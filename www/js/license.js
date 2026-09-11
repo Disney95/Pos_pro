@@ -3,12 +3,19 @@
 // Ideal para clientes con conectividad limitada o intermitente.
 //
 // Flujo:
-//   1) Al instalar, la app arranca en modo DEMO durante TRIAL_DAYS días, sin pedir nada.
+//   1) Al instalar, la app arranca en modo DEMO durante TRIAL_DAYS días, con algunas
+//      funciones limitadas (ver isDemoLocked(), usado desde app.js).
 //   2) Al cumplirse el plazo, se bloquea POR COMPLETO y se muestra el código de dispositivo
 //      (para que el cliente lo envíe al proveedor) y un campo para pegar el código de activación.
 //   3) El código de activación se genera offline (fuera de la app, con generate-license.js y
 //      la clave privada) y se valida aquí localmente con la clave pública embebida (RSA-SHA256).
 //   4) Una vez activado, queda activado permanentemente en este dispositivo (no vuelve a pedirse).
+//
+// El conteo de los 3 días usa como ancla firstInstallTime del sistema Android (vía el plugin
+// nativo InstallTime, agregado por el workflow de compilación), que NO se reinicia si el
+// cliente borra los datos de la app — solo si desinstala y reinstala. Si el plugin no está
+// disponible (ej. probando en navegador, o un APK viejo sin el plugin), cae a un respaldo
+// basado en localStorage (menos robusto, pero funcional).
 //
 // IMPORTANTE: la clave PRIVADA nunca debe estar en este archivo ni en la app. Solo la pública.
 
@@ -51,6 +58,21 @@ async function getDeviceId() {
         localStorage.setItem('deviceIdFallback', fallback);
     }
     return fallback;
+}
+
+// ---- Fecha real de instalación según el sistema Android (plugin nativo InstallTime) ----
+// A diferencia de localStorage, esto NO se reinicia si el cliente borra los datos/caché de
+// la app: solo cambia si desinstala y vuelve a instalar. Si el plugin no está disponible
+// (ej. APK compilado antes de agregar este plugin, o pruebas en navegador), devuelve null
+// y se usa el respaldo local (menos robusto, pero funcional).
+async function getSystemInstallTime() {
+    try {
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.InstallTime) {
+            const info = await window.Capacitor.Plugins.InstallTime.getInstallTime();
+            if (info && info.firstInstallTime) return info.firstInstallTime;
+        }
+    } catch (e) { /* plugin no disponible: seguimos con el respaldo local */ }
+    return null;
 }
 
 // ---- Verificación offline del código de activación (RSA-SHA256 con Web Crypto) ----
@@ -116,20 +138,39 @@ function saveActivation(deviceId, payload) {
     }));
 }
 
-// ---- Seguimiento del período de prueba (offline, con detección de manipulación del reloj) ----
-function getTrialStatus() {
+// ---- ¿Está la app en modo demo (sin activar)? ----
+// Chequeo simple y síncrono (sin verificar deviceId) para uso en la UI: solo decide si se
+// muestran indicadores de "bloqueado" y si se permite abrir ciertas funciones limitadas.
+// El bloqueo real de seguridad (con verificación de firma y deviceId) lo hace
+// checkLicenseOnStartup() más arriba; esto es únicamente para la experiencia del usuario.
+function isDemoLocked() {
+    try {
+        return !localStorage.getItem(LICENSE_ACTIVATED_KEY);
+    } catch (e) {
+        return true;
+    }
+}
+window.isDemoLocked = isDemoLocked;
+
+// ---- Seguimiento del período de prueba (con detección de manipulación del reloj) ----
+// Usa firstInstallTime del sistema (plugin InstallTime) como ancla principal cuando está
+// disponible: no se reinicia al borrar datos de la app, solo al desinstalar/reinstalar.
+// Si el plugin no está disponible todavía, cae al respaldo local (localStorage).
+async function getTrialStatus() {
     const now = Date.now();
-    let installAt = parseInt(localStorage.getItem(TRIAL_INSTALL_KEY), 10);
+    const systemInstallTime = await getSystemInstallTime();
+
+    let installAt = systemInstallTime || parseInt(localStorage.getItem(TRIAL_INSTALL_KEY), 10);
     let lastSeen = parseInt(localStorage.getItem(TRIAL_LAST_SEEN_KEY), 10);
 
     if (!installAt) {
-        // Primera vez que se abre la app
+        // Primera vez que se abre la app y tampoco hay plugin nativo disponible.
         installAt = now;
-        lastSeen = now;
-        localStorage.setItem(TRIAL_INSTALL_KEY, String(installAt));
-        localStorage.setItem(TRIAL_LAST_SEEN_KEY, String(lastSeen));
-        return { expired: false, daysRemaining: TRIAL_DAYS, tampered: false };
     }
+    if (!localStorage.getItem(TRIAL_INSTALL_KEY)) {
+        localStorage.setItem(TRIAL_INSTALL_KEY, String(installAt));
+    }
+    if (!lastSeen) lastSeen = now;
 
     // Si la hora actual retrocede respecto a la última vista, el reloj fue manipulado hacia atrás.
     const tampered = now < lastSeen;
@@ -222,7 +263,7 @@ async function checkLicenseOnStartup() {
         return;
     }
 
-    const trial = getTrialStatus();
+    const trial = await getTrialStatus();
     if (!trial.expired) {
         showTrialBanner(trial.daysRemaining);
         return;

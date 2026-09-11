@@ -70,6 +70,16 @@
             }, duration);
         }
 
+        // Aviso de función bloqueada en modo demo (usa isDemoLocked() de license.js)
+        function showDemoLockedMessage(featureName) {
+            const text = `${featureName}: disponible solo en la versión completa`;
+            if (typeof showToast === 'function') {
+                showToast(text, 'info', 3000);
+            } else {
+                alert(text);
+            }
+        }
+
         function formatMoney(amount) {
             const n = Number(amount || 0).toFixed(2);
             if (currencySettings.code === 'EUR') return `${n}€`;
@@ -702,20 +712,34 @@
                 `;
                           }renderExpenseTable();
 
+            // ---- Indicadores de bloqueo en modo demo (botones ya existentes en el HTML) ----
+            const demoLocked = !!(window.isDemoLocked && window.isDemoLocked());
+            const paymentsBtn = document.getElementById('paymentsHistoryBtn');
+            if (paymentsBtn) paymentsBtn.classList.toggle('demo-locked', demoLocked);
+            const addExpenseBtn = document.getElementById('addExpenseBtn');
+            if (addExpenseBtn) addExpenseBtn.classList.toggle('demo-locked', demoLocked);
+
             document.getElementById('shiftHistoryPanel').style.display = isAdmin ? '' : 'none';
             if (isAdmin) {
                 const table = document.getElementById('historyTable');
-                table.innerHTML = shiftHistory.map((s, idx) => `
-                    <tr>
-                        <td>${s.turnNumber || '-'}</td>
-                        <td>${s.employeeName || '-'}</td>
-                        <td>${s.date}</td>
-                        <td>${formatMoney(s.totalSales)}</td>
-                        <td>${formatMoney(s.transferSales || 0)}</td>
-                        <td class="${s.difference < 0 ? 'diff-negative' : 'diff-positive'}">${s.difference >= 0 ? '+' : ''}${formatMoney(s.difference)}</td>
-                        <td><button class="btn btn-danger btn-sm" onclick="deleteShiftRecord(${idx})">Eliminar</button></td>
-                    </tr>
-                `).join('');
+                if (demoLocked) {
+                    table.innerHTML = `
+                        <tr><td colspan="7" style="text-align:center; padding:20px 0; color:var(--text-muted);">
+                            🔒 Historial de Cuadres disponible solo en la versión completa
+                        </td></tr>`;
+                } else {
+                    table.innerHTML = shiftHistory.map((s, idx) => `
+                        <tr>
+                            <td>${s.turnNumber || '-'}</td>
+                            <td>${s.employeeName || '-'}</td>
+                            <td>${s.date}</td>
+                            <td>${formatMoney(s.totalSales)}</td>
+                            <td>${formatMoney(s.transferSales || 0)}</td>
+                            <td class="${s.difference < 0 ? 'diff-negative' : 'diff-positive'}">${s.difference >= 0 ? '+' : ''}${formatMoney(s.difference)}</td>
+                            <td><button class="btn btn-danger btn-sm" onclick="deleteShiftRecord(${idx})">Eliminar</button></td>
+                        </tr>
+                    `).join('');
+                }
             }
         }
 
@@ -754,6 +778,10 @@
         }
 
         function openExpenseModal() {
+            if (window.isDemoLocked && window.isDemoLocked()) {
+                showDemoLockedMessage('Gastos / Retiros del Turno');
+                return;
+            }
             if (!currentShift) return alert("Debes abrir el turno primero");
             document.getElementById('expenseAmount').value = '';
             document.getElementById('expenseReason').value = '';
@@ -861,6 +889,10 @@
             localStorage.setItem('paymentsLog', JSON.stringify(paymentsLog));
         }
         function openPaymentsHistoryModal() {
+            if (window.isDemoLocked && window.isDemoLocked()) {
+                showDemoLockedMessage('Historial de Pagos');
+                return;
+            }
             renderPaymentsHistoryList();
             document.getElementById('paymentsHistoryModal').classList.add('active');
         }

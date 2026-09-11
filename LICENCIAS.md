@@ -48,19 +48,34 @@ verificación del código se hace localmente con criptografía (RSA-SHA256 / Web
 
 ## 3. Notas importantes / limitaciones
 
-- El conteo de 3 días se basa en la fecha de instalación guardada localmente en el
-  dispositivo, con detección de manipulación del reloj (si el cliente atrasa la hora
-  del teléfono para alargar la prueba, la app lo detecta y bloquea igual). Esto no es
-  infalible al 100% sin acceso a hora del sistema operativo a nivel nativo, pero
-  cubre el caso normal de uso.
-- Si el cliente borra los datos de la app (o la desinstala y reinstala), el contador
-  de prueba se reinicia. Esto es una limitación conocida de un sistema puramente
-  basado en JavaScript/almacenamiento local; para cerrarla del todo se necesitaría un
-  pequeño plugin nativo de Android que lea `firstInstallTime` del sistema (que no se
-  reinicia al borrar datos, solo al desinstalar). Se puede agregar más adelante si
-  hace falta más robustez.
+- El conteo de 3 días usa como ancla principal `firstInstallTime` del sistema Android,
+  leído mediante un pequeño plugin nativo (`InstallTimePlugin`) que el workflow de
+  GitHub Actions agrega automáticamente en cada compilación (ver
+  `.github/workflows/build-apk.yml`, paso "Agregar plugin nativo InstallTime"). Esta
+  fecha la gestiona el propio sistema operativo y **no se reinicia si el cliente borra
+  los datos/caché de la app** — solo cambia si la desinstala y la vuelve a instalar.
+  Si por algún motivo el plugin no estuviera disponible (por ejemplo, un APK viejo
+  compilado antes de este cambio), la app cae automáticamente a un respaldo basado en
+  `localStorage`, con detección de manipulación del reloj.
 - Cada código de activación está atado a un único `deviceId`, así que no sirve para
   activar la app en otro teléfono distinto al que lo generaste.
 - El código de activación no tiene fecha de vencimiento por defecto (activa la app
   para siempre en ese dispositivo). Si quieres licencias con vencimiento (ej. renovación
   anual), se puede agregar un campo de expiración al payload — dime si te interesa.
+
+## 4. Funciones limitadas durante el modo demo
+
+Mientras la app no esté activada (esté en los 3 días de prueba), quedan bloqueadas:
+
+- **Historial de Pagos** (ícono de reloj en la vista de Caja).
+- **Gastos / Retiros del Turno** (botón "+ Agregar").
+- **Historial de Cuadres** (tabla en la vista de Caja, solo visible para administradores).
+
+Cada una muestra un pequeño candado 🔒 sobre el botón correspondiente, y al intentar
+usarla aparece un aviso indicando que está disponible solo en la versión completa. Esta
+restricción se activa/desactiva automáticamente según `isDemoLocked()` en
+`www/js/license.js`, y desaparece en cuanto la app queda activada con un código válido.
+
+Para agregar más funciones a esta lista en el futuro, el patrón es: al inicio de la
+función que abre esa pantalla/modal, verificar `window.isDemoLocked()` y, si es `true`,
+llamar a `showDemoLockedMessage('Nombre de la función')` y hacer `return` sin continuar.
