@@ -46,18 +46,20 @@ jobs:
       - name: Agregar plugin nativo InstallTime (fecha real de instalación del sistema)
         run: |
           python3 - <<'PYEOF'
-          import re, os
+          import re, os, json
 
-          # Ubicar el paquete de la app a partir de capacitor.config.json
-          import json
           with open("capacitor.config.json", "r", encoding="utf-8") as f:
               app_id = json.load(f)["appId"]
           pkg_path = app_id.replace(".", "/")
           java_dir = f"android/app/src/main/java/{pkg_path}"
           os.makedirs(java_dir, exist_ok=True)
 
-          plugin_path = f"{java_dir}/InstallTimePlugin.kt"
-          plugin_code = f'''package {app_id}
+          main_kt = f"{java_dir}/MainActivity.kt"
+          main_java = f"{java_dir}/MainActivity.java"
+
+          if os.path.exists(main_kt):
+              plugin_path = f"{java_dir}/InstallTimePlugin.kt"
+              plugin_code = f'''package {app_id}
 
           import com.getcapacitor.JSObject
           import com.getcapacitor.Plugin
@@ -81,15 +83,10 @@ jobs:
               }}
           }}
           '''
-          with open(plugin_path, "w", encoding="utf-8") as f:
-              f.write(plugin_code)
-          print(f"Plugin creado en {plugin_path}")
+              with open(plugin_path, "w", encoding="utf-8") as f:
+                  f.write(plugin_code)
+              print(f"Plugin creado en {plugin_path}")
 
-          # Registrar el plugin en MainActivity (Kotlin o Java, según lo genere Capacitor)
-          main_kt = f"{java_dir}/MainActivity.kt"
-          main_java = f"{java_dir}/MainActivity.java"
-
-          if os.path.exists(main_kt):
               with open(main_kt, "r", encoding="utf-8") as f:
                   content = f.read()
               if "registerPlugin(InstallTimePlugin" not in content:
@@ -112,7 +109,39 @@ jobs:
                   print("Plugin registrado en MainActivity.kt")
               else:
                   print("El plugin ya estaba registrado en MainActivity.kt")
+
           elif os.path.exists(main_java):
+              plugin_path = f"{java_dir}/InstallTimePlugin.java"
+              plugin_code = f'''package {app_id};
+
+          import android.content.pm.PackageInfo;
+          import android.content.pm.PackageManager;
+          import com.getcapacitor.JSObject;
+          import com.getcapacitor.Plugin;
+          import com.getcapacitor.PluginCall;
+          import com.getcapacitor.PluginMethod;
+          import com.getcapacitor.annotation.CapacitorPlugin;
+
+          @CapacitorPlugin(name = "InstallTime")
+          public class InstallTimePlugin extends Plugin {{
+              @PluginMethod
+              public void getInstallTime(PluginCall call) {{
+                  try {{
+                      PackageManager pm = getContext().getPackageManager();
+                      PackageInfo info = pm.getPackageInfo(getContext().getPackageName(), 0);
+                      JSObject ret = new JSObject();
+                      ret.put("firstInstallTime", info.firstInstallTime);
+                      call.resolve(ret);
+                  }} catch (Exception e) {{
+                      call.reject("No se pudo leer firstInstallTime: " + e.getMessage());
+                  }}
+              }}
+          }}
+          '''
+              with open(plugin_path, "w", encoding="utf-8") as f:
+                  f.write(plugin_code)
+              print(f"Plugin creado en {plugin_path}")
+
               with open(main_java, "r", encoding="utf-8") as f:
                   content = f.read()
               if "registerPlugin(InstallTimePlugin" not in content:
