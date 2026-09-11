@@ -76,6 +76,25 @@ usarla aparece un aviso indicando que está disponible solo en la versión compl
 restricción se activa/desactiva automáticamente según `isDemoLocked()` en
 `www/js/license.js`, y desaparece en cuanto la app queda activada con un código válido.
 
-Para agregar más funciones a esta lista en el futuro, el patrón es: al inicio de la
-función que abre esa pantalla/modal, verificar `window.isDemoLocked()` y, si es `true`,
-llamar a `showDemoLockedMessage('Nombre de la función')` y hacer `return` sin continuar.
+## 5. Actualizar la app (nuevas versiones)
+
+Como el APK siempre se firma con el mismo keystore (los *secrets* configurados en el
+repositorio), cada actualización se instala **encima** de la app existente — el cliente
+no necesita desinstalar nada. Gracias a esto:
+
+- Los clientes **ya activados siguen activados** después de actualizar (la activación
+  vive en el propio dispositivo y una actualización no la borra).
+- Los clientes que aún están en período de prueba **conservan sus días restantes**.
+- Los códigos de activación que ya entregaste **siguen siendo válidos**, mientras no
+  regeneres el par de claves RSA.
+
+El workflow (`build-apk.yml`) ahora asigna automáticamente un `versionCode` distinto en
+cada compilación (usa el número de ejecución de GitHub Actions) y el `versionName` según
+la versión de `package.json`, así Android reconoce cada build como una versión más nueva.
+
+**Cuidado con esto — rompería la continuidad para todos los clientes:**
+- Si alguna vez pierdes o cambias el **keystore de firma**, la siguiente actualización ya
+  no podrá instalarse encima de la app existente: Android pedirá desinstalar primero, y
+  eso sí borra la activación y reinicia el contador de prueba de todos los clientes.
+- Si regeneras el **par de claves RSA** (`private_key.pem`), los códigos de activación ya
+  entregados dejan de ser válidos — tendrías que reactivar a todos los clientes existentes.
