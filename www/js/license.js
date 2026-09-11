@@ -1,26 +1,43 @@
-// ============ SISTEMA DE LICENCIAS + VINCULACIÓN DE DISPOSITIVO ============
-// Requiere: js/firebase-config.js cargado ANTES que este archivo (usa firebaseReady/auth/db).
-// Requiere: colección "licenses" en Firestore + firestore.rules (ver archivo en la raíz del repo).
-// Ver LICENCIAS.md para instrucciones completas de configuración y administración.
+// ============ SISTEMA DE PRUEBA (3 DÍAS) + ACTIVACIÓN POR CÓDIGO OFFLINE ============
+// No depende de Firebase ni de ningún servidor: funciona sin conexión a internet.
+// Ideal para clientes con conectividad limitada o intermitente.
+//
+// Flujo:
+//   1) Al instalar, la app arranca en modo DEMO durante TRIAL_DAYS días, sin pedir nada.
+//   2) Al cumplirse el plazo, se bloquea POR COMPLETO y se muestra el código de dispositivo
+//      (para que el cliente lo envíe al proveedor) y un campo para pegar el código de activación.
+//   3) El código de activación se genera offline (fuera de la app, con generate-license.js y
+//      la clave privada) y se valida aquí localmente con la clave pública embebida (RSA-SHA256).
+//   4) Una vez activado, queda activado permanentemente en este dispositivo (no vuelve a pedirse).
+//
+// IMPORTANTE: la clave PRIVADA nunca debe estar en este archivo ni en la app. Solo la pública.
 
-const LICENSE_VALIDITY_DAYS = 30;
-const LICENSE_STORAGE_KEY = 'licenseToken';
-const LICENSE_COLLECTION = 'licenses';
-const LICENSE_RECHECK_INTERVAL_MS = 6 * 60 * 60 * 1000; // Reintento silencioso cada 6h mientras la app esté abierta
+const TRIAL_DAYS = 3;
+const TRIAL_INSTALL_KEY = 'trialInstallAt';
+const TRIAL_LAST_SEEN_KEY = 'trialLastSeenAt';
+const LICENSE_ACTIVATED_KEY = 'licenseActivatedV2';
 
-// ---- Almacenamiento local del token de activación ----
-function getStoredLicenseToken() {
-    try { return JSON.parse(localStorage.getItem(LICENSE_STORAGE_KEY)); }
-    catch (e) { return null; }
+// Clave pública (formato SPKI, base64) generada junto con generate-license.js.
+// Esta SÍ va embebida en la app: solo sirve para VERIFICAR códigos, no para generarlos.
+const LICENSE_PUBLIC_KEY_B64 = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArse1XXfVQLs982btTHK4w8JYNTfkyT7efJAzK5GFUpaBqOzPd1uXUggezWzcq2+ykLzztLnMhrH74cc7xWBb4KZBB/OQjbiiLvOW9B6TF1nCvrjKWpv9rFKsVXnoekOnGqp49VQcJft4tUUoTxVl0vST8SCMh3KdbR1/lLyY5nz5wpaiN1wIuTjc6528uKXWdY8lsusv9jGlTbGQCaU3jj8JxLKl/VuF6+zP201uauDxbPA02vrudwq58AE9jB+SPtTIEsRj6PwuQhpLnsrba8NOCMhyk3ziNKDA+AGqKHYkIYBLhYyZRlLu5qsQ8SXjbhH0C9RPbCJ+VnV9AGQCHwIDAQAB";
+
+// ---- Utilidades base64url <-> bytes ----
+function base64UrlToBytes(b64url) {
+    let b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
 }
-function saveLicenseToken(token) {
-    localStorage.setItem(LICENSE_STORAGE_KEY, JSON.stringify(token));
-}
-function clearLicenseToken() {
-    localStorage.removeItem(LICENSE_STORAGE_KEY);
+function base64ToBytes(b64) {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
 }
 
-// ---- Identificador de dispositivo (vía @capacitor/device; con respaldo para pruebas en navegador) ----
+// ---- Identificador de dispositivo (vía @capacitor/device; respaldo si no está disponible) ----
 async function getDeviceId() {
     try {
         if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Device) {
@@ -35,174 +52,184 @@ async function getDeviceId() {
     }
     return fallback;
 }
-async function getDeviceModel() {
-    try {
-        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Device) {
-            const info = await window.Capacitor.Plugins.Device.getInfo();
-            return `${info.manufacturer || ''} ${info.model || ''}`.trim() || 'Desconocido';
-        }
-    } catch (e) {}
-    return 'Navegador/Desconocido';
+
+// ---- Verificación offline del código de activación (RSA-SHA256 con Web Crypto) ----
+let cachedPublicKey = null;
+async function importLicensePublicKey() {
+    if (cachedPublicKey) return cachedPublicKey;
+    const der = base64ToBytes(LICENSE_PUBLIC_KEY_B64);
+    cachedPublicKey = await crypto.subtle.importKey(
+        'spki',
+        der.buffer,
+        { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+        false,
+        ['verify']
+    );
+    return cachedPublicKey;
 }
 
-// ---- UI del overlay de licencia ----
-function showLicenseForm(message, isError) {
+// El código tiene el formato: <payload_base64url>.<firma_base64url>
+// payload = JSON { d: deviceId, n: nombreCliente (opcional), iat: fechaEmision (opcional) }
+async function verifyActivationCode(rawCode, expectedDeviceId) {
+    const code = (rawCode || '').trim();
+    const parts = code.split('.');
+    if (parts.length !== 2) return { ok: false, reason: 'Formato de código inválido.' };
+    const [payloadB64, sigB64] = parts;
+
+    let payload;
+    try {
+        const payloadBytes = base64UrlToBytes(payloadB64);
+        payload = JSON.parse(new TextDecoder().decode(payloadBytes));
+    } catch (e) {
+        return { ok: false, reason: 'El código está corrupto o incompleto.' };
+    }
+
+    if (!payload || payload.d !== expectedDeviceId) {
+        return { ok: false, reason: 'Este código no corresponde a este dispositivo.' };
+    }
+
+    try {
+        const key = await importLicensePublicKey();
+        const signatureBytes = base64UrlToBytes(sigB64);
+        const dataBytes = new TextEncoder().encode(payloadB64);
+        const valid = await crypto.subtle.verify(
+            { name: 'RSASSA-PKCS1-v1_5' },
+            key,
+            signatureBytes.buffer,
+            dataBytes.buffer
+        );
+        if (!valid) return { ok: false, reason: 'Código de activación inválido.' };
+        return { ok: true, payload };
+    } catch (e) {
+        return { ok: false, reason: 'No se pudo verificar el código en este dispositivo.' };
+    }
+}
+
+// ---- Estado de activación (persistente una vez validado) ----
+function getStoredActivation() {
+    try { return JSON.parse(localStorage.getItem(LICENSE_ACTIVATED_KEY)); }
+    catch (e) { return null; }
+}
+function saveActivation(deviceId, payload) {
+    localStorage.setItem(LICENSE_ACTIVATED_KEY, JSON.stringify({
+        deviceId, activatedAt: Date.now(), clientName: payload.n || null
+    }));
+}
+
+// ---- Seguimiento del período de prueba (offline, con detección de manipulación del reloj) ----
+function getTrialStatus() {
+    const now = Date.now();
+    let installAt = parseInt(localStorage.getItem(TRIAL_INSTALL_KEY), 10);
+    let lastSeen = parseInt(localStorage.getItem(TRIAL_LAST_SEEN_KEY), 10);
+
+    if (!installAt) {
+        // Primera vez que se abre la app
+        installAt = now;
+        lastSeen = now;
+        localStorage.setItem(TRIAL_INSTALL_KEY, String(installAt));
+        localStorage.setItem(TRIAL_LAST_SEEN_KEY, String(lastSeen));
+        return { expired: false, daysRemaining: TRIAL_DAYS, tampered: false };
+    }
+
+    // Si la hora actual retrocede respecto a la última vista, el reloj fue manipulado hacia atrás.
+    const tampered = now < lastSeen;
+    if (!tampered) {
+        localStorage.setItem(TRIAL_LAST_SEEN_KEY, String(now));
+    }
+
+    const daysElapsed = Math.floor((now - installAt) / (24 * 60 * 60 * 1000));
+    const expired = tampered || daysElapsed >= TRIAL_DAYS;
+    const daysRemaining = Math.max(0, TRIAL_DAYS - daysElapsed);
+    return { expired, daysRemaining, tampered };
+}
+
+// ---- UI del overlay ----
+function showTrialBanner(daysRemaining) {
+    let banner = document.getElementById('trialBanner');
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'trialBanner';
+        banner.style.cssText = 'position:fixed;top:0;left:0;width:100%;padding:6px 10px;' +
+            'background:#333;color:#fff;font-size:0.72rem;text-align:center;z-index:400;opacity:0.9;';
+        document.body.appendChild(banner);
+    }
+    const text = daysRemaining <= 1
+        ? 'Versión de prueba: último día'
+        : `Versión de prueba: ${daysRemaining} días restantes`;
+    banner.innerText = text;
+}
+
+async function showActivationOverlay() {
     document.getElementById('licenseOverlay').classList.add('active');
     document.getElementById('licenseFormBox').style.display = 'block';
     document.getElementById('licenseBlockedBox').style.display = 'none';
+
+    const deviceId = await getDeviceId();
+    const deviceIdEl = document.getElementById('licenseDeviceId');
+    if (deviceIdEl) deviceIdEl.innerText = deviceId;
+
     const msg = document.getElementById('licenseMsg');
-    msg.innerText = message || '';
-    msg.style.color = isError ? 'var(--danger-color)' : 'var(--text-muted)';
-}
-function showLicenseBlocked(message) {
-    document.getElementById('licenseOverlay').classList.add('active');
-    document.getElementById('licenseFormBox').style.display = 'none';
-    document.getElementById('licenseBlockedBox').style.display = 'block';
-    document.getElementById('licenseBlockedMsg').innerText = message;
-}
-function hideLicenseOverlay() {
-    document.getElementById('licenseOverlay').classList.remove('active');
+    if (msg) { msg.innerText = ''; }
 }
 
-async function ensureLicenseAuth() {
-    if (!firebaseReady || !auth) throw new Error('Firebase no está configurado en esta app todavía.');
-    if (!auth.currentUser) await auth.signInAnonymously();
+function showLicenseError(text) {
+    const msg = document.getElementById('licenseMsg');
+    if (msg) { msg.innerText = text; msg.style.color = 'var(--danger-color)'; }
 }
 
-// ---- Activación (primer uso, requiere internet) ----
+function copyDeviceId() {
+    const deviceIdEl = document.getElementById('licenseDeviceId');
+    if (!deviceIdEl) return;
+    const text = deviceIdEl.innerText;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => showLicenseError('Código de dispositivo copiado.'));
+    }
+}
+
 async function activateLicense() {
-    const email = (document.getElementById('licenseEmail').value || '').trim().toLowerCase();
-    const key = (document.getElementById('licenseKeyInput').value || '').trim().toUpperCase();
-    if (!email || !key) return showLicenseForm('Ingresa tu correo y tu clave de licencia.', true);
-    if (!navigator.onLine) return showLicenseForm('Necesitas conexión a internet para activar la licencia la primera vez.', true);
+    const codeInput = document.getElementById('licenseKeyInput');
+    const code = (codeInput && codeInput.value || '').trim();
+    if (!code) { showLicenseError('Pega el código de activación que te envió el proveedor.'); return; }
 
     const btn = document.getElementById('licenseActivateBtn');
     btn.disabled = true;
     btn.innerText = 'Verificando...';
+
     try {
-        await ensureLicenseAuth();
-        const ref = db.collection(LICENSE_COLLECTION).doc(key);
-        const snap = await ref.get();
-        if (!snap.exists) { showLicenseForm('Clave de licencia inválida.', true); return; }
-
-        const data = snap.data();
-        if ((data.email || '').toLowerCase() !== email) { showLicenseForm('El correo no coincide con esta licencia.', true); return; }
-        if (data.status === 'revoked') { showLicenseForm('Esta licencia fue revocada.', true); return; }
-
         const deviceId = await getDeviceId();
-        if (data.boundDeviceId && data.boundDeviceId !== deviceId) {
-            showLicenseForm('Esta licencia ya está activada en otro dispositivo. Contacta al administrador para liberarla.', true);
-            return;
-        }
+        const result = await verifyActivationCode(code, deviceId);
+        if (!result.ok) { showLicenseError(result.reason); return; }
 
-        const deviceModel = await getDeviceModel();
-        const now = Date.now();
-        const newExpiresAt = now + LICENSE_VALIDITY_DAYS * 24 * 60 * 60 * 1000;
-
-        const updates = {
-            boundDeviceId: deviceId,
-            boundDeviceModel: deviceModel,
-            lastCheckAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        if (!data.boundDeviceId) {
-            // Primera activación de esta licencia: fija fecha de activación y vencimiento
-            updates.activatedAt = firebase.firestore.FieldValue.serverTimestamp();
-            updates.expiresAt = firebase.firestore.Timestamp.fromMillis(newExpiresAt);
-        }
-        await ref.update(updates);
-
-        saveLicenseToken({
-            licenseKey: key,
-            email,
-            boundDeviceId: deviceId,
-            expiresAt: data.expiresAt ? data.expiresAt.toDate().getTime() : newExpiresAt,
-            activatedAt: now
-        });
-
-        hideLicenseOverlay();
-        startLicenseRecheckLoop();
+        saveActivation(deviceId, result.payload);
+        document.getElementById('licenseOverlay').classList.remove('active');
+        const banner = document.getElementById('trialBanner');
+        if (banner) banner.remove();
     } catch (e) {
-        showLicenseForm('No se pudo verificar la licencia: ' + e.message, true);
+        showLicenseError('No se pudo verificar el código: ' + e.message);
     } finally {
         btn.disabled = false;
         btn.innerText = 'Activar';
     }
 }
 
-// ---- Revalidación con el servidor (silenciosa cuando hay internet) ----
-async function revalidateLicenseOnline(token) {
-    try {
-        await ensureLicenseAuth();
-        const ref = db.collection(LICENSE_COLLECTION).doc(token.licenseKey);
-        const snap = await ref.get();
-        if (!snap.exists) { clearLicenseToken(); showLicenseBlocked('Esta licencia ya no existe. Contacta al administrador.'); return false; }
-
-        const data = snap.data();
-        if (data.status === 'revoked') { clearLicenseToken(); showLicenseBlocked('Esta licencia fue revocada.'); return false; }
-
-        const deviceId = await getDeviceId();
-        if (data.boundDeviceId && data.boundDeviceId !== deviceId) {
-            clearLicenseToken();
-            showLicenseBlocked('Esta licencia está vinculada a otro dispositivo.');
-            return false;
-        }
-
-        const expiresAtMs = data.expiresAt ? data.expiresAt.toDate().getTime() : token.expiresAt;
-        if (Date.now() > expiresAtMs) {
-            clearLicenseToken();
-            showLicenseBlocked('Tu licencia expiró. Contacta al administrador para renovarla.');
-            return false;
-        }
-
-        token.expiresAt = expiresAtMs;
-        saveLicenseToken(token);
-        ref.update({ lastCheckAt: firebase.firestore.FieldValue.serverTimestamp() }).catch(() => {});
-        return true;
-    } catch (e) {
-        // Falla de red pasajera: no bloquea al usuario por esto, ya se validó localmente antes
-        return true;
-    }
-}
-
-function startLicenseRecheckLoop() {
-    if (window.__licenseRecheckStarted) return;
-    window.__licenseRecheckStarted = true;
-    setInterval(async () => {
-        if (!navigator.onLine) return;
-        const token = getStoredLicenseToken();
-        if (token) await revalidateLicenseOnline(token);
-    }, LICENSE_RECHECK_INTERVAL_MS);
-    window.addEventListener('online', async () => {
-        const token = getStoredLicenseToken();
-        if (token) await revalidateLicenseOnline(token);
-    });
-}
-
-// ---- Validación al iniciar la app (funciona sin internet) ----
+// ---- Punto de entrada: se ejecuta al cargar la app ----
 async function checkLicenseOnStartup() {
-    const token = getStoredLicenseToken();
-    if (!token) { showLicenseForm(''); return; }
-
     const deviceId = await getDeviceId();
-    if (token.boundDeviceId !== deviceId) {
-        clearLicenseToken();
-        showLicenseForm('Los datos de esta licencia no coinciden con este dispositivo.', true);
+    const activation = getStoredActivation();
+
+    // Ya activada en este dispositivo: no se vuelve a pedir nada.
+    if (activation && activation.deviceId === deviceId) {
         return;
     }
 
-    if (Date.now() > token.expiresAt) {
-        if (navigator.onLine) {
-            const ok = await revalidateLicenseOnline(token);
-            if (ok) { hideLicenseOverlay(); startLicenseRecheckLoop(); }
-        } else {
-            showLicenseBlocked('Tu licencia expiró. Conéctate a internet para renovarla.');
-        }
+    const trial = getTrialStatus();
+    if (!trial.expired) {
+        showTrialBanner(trial.daysRemaining);
         return;
     }
 
-    hideLicenseOverlay();
-    startLicenseRecheckLoop();
-    if (navigator.onLine) revalidateLicenseOnline(token); // chequeo silencioso, no bloquea el arranque
+    // Trial vencido (o reloj manipulado) y no activada: bloqueo total hasta introducir código válido.
+    await showActivationOverlay();
 }
 
 checkLicenseOnStartup();
