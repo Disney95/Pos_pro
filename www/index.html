@@ -18,13 +18,18 @@
     <div class="login-overlay" id="licenseOverlay">
         <div class="login-card">
             <div id="licenseFormBox">
-                <h2>Activación de Licencia</h2>
-                <p style="color:var(--text-muted); font-size:0.85rem; margin-top:6px;">Ingresa los datos que te dio tu proveedor para activar esta copia en este dispositivo.</p>
+                <h2>Tu período de prueba terminó</h2>
+                <p style="color:var(--text-muted); font-size:0.85rem; margin-top:6px;">Envía el código de tu dispositivo a tu proveedor para obtener el código de activación.</p>
                 <div class="form-group" style="margin-top:14px;">
-                    <input type="email" id="licenseEmail" placeholder="Correo electrónico">
+                    <label style="font-size:0.75rem; color:var(--text-muted); display:block; text-align:left; margin-bottom:4px;">Código de dispositivo</label>
+                    <div style="display:flex; gap:6px; align-items:center;">
+                        <code id="licenseDeviceId" style="flex:1; font-size:0.72rem; word-break:break-all; background:rgba(255,255,255,0.06); padding:8px; border-radius:8px; display:block; text-align:left;"></code>
+                        <button type="button" class="btn btn-secondary" style="padding:8px 10px; font-size:0.75rem;" onclick="copyDeviceId()">Copiar</button>
+                    </div>
                 </div>
                 <div class="form-group">
-                    <input type="text" id="licenseKeyInput" placeholder="Clave de licencia" style="text-transform:uppercase;">
+                    <label style="font-size:0.75rem; color:var(--text-muted); display:block; text-align:left; margin-bottom:4px;">Código de activación</label>
+                    <textarea id="licenseKeyInput" placeholder="Pega aquí el código que te envió tu proveedor" rows="3" style="width:100%; font-size:0.75rem; word-break:break-all;"></textarea>
                 </div>
                 <button class="btn btn-primary btn-block" id="licenseActivateBtn" onclick="activateLicense()">Activar</button>
                 <p id="licenseMsg" style="font-size:0.8rem; color:var(--text-muted); margin-top:10px; min-height:1em;"></p>
