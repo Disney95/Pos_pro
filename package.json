@@ -1,6 +1,6 @@
 {
   "name": "pos-pro",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "POS Pro - Punto de venta con inventario, caja, roles y reportes",
   "scripts": {
     "build": "echo 'No build step - static HTML in www/' ",
@@ -11,6 +11,7 @@
     "@capacitor/core": "^6.1.2",
     "@capacitor/app": "^6.0.2",
     "@capacitor/device": "^6.0.2",
+    "@capacitor/status-bar": "^6.0.1",
     "@capacitor-community/bluetooth-le": "^6.0.0"
   },
   "devDependencies": {
