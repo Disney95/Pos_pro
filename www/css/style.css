@@ -67,15 +67,16 @@
         /* VISTA POS / CATÁLOGO */
         #pos-view { flex-direction: column; height: 100%; position: relative; padding: 0; }
         .pos-toolbar { padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; background: var(--bg-card); flex-shrink: 0; }
-        .search-row { display: flex; gap: 8px; }
-        .search-row input { flex: 1; padding: 8px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-primary); color: var(--text-main); font-size: 0.9rem; }
-        .btn-icon-scan { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-main); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+        .search-row { display: flex; gap: 6px; }
+        .search-row input { flex: 1; min-width: 0; padding: 8px 6px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-primary); color: var(--text-main); font-size: 0.85rem; }
+        #barcodeInput { flex: 0 1 100px; max-width: 100px; }
+        .btn-icon-scan { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-main); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
         .category-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
         .category-chip { padding: 5px 13px; border-radius: 16px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-main); font-size: 0.78rem; font-weight: 600; white-space: nowrap; cursor: pointer; }
         .category-chip.active { background: var(--accent-color); color: white; border-color: var(--accent-color); }
 
-        .catalog-container { flex: 1; overflow-y: auto; padding: 12px; }
-        .grid-products { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+        .catalog-container { flex: 1; overflow-y: auto; padding: 8px; }
+        .grid-products { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 6px; }
 
         /* RECUADRO DE PRODUCTO Y STOCK ABAJO A LA DERECHA */
         .product-card {
@@ -97,7 +98,8 @@
         .product-card.stock-out { box-shadow: 0 0 0 2px var(--danger-color); opacity: 0.55; cursor: not-allowed; }
         .product-title { font-weight: bold; font-size: 0.92rem; line-height: 1.2; }
         .product-category-label { font-size: 0.62rem; text-transform: uppercase; font-weight: 700; margin-bottom: 2px; }
-        .product-price { font-weight: bold; font-size: 0.88rem; margin-top: 4px; }
+        .product-bottom-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 6px; }
+        .product-price { font-weight: bold; font-size: 0.88rem; }
         /* El texto de la tarjeta siempre se fuerza a negro, sin importar el color de fondo ni el tema */
         .product-card .product-category-label,
         .product-card .product-title,
@@ -105,15 +107,16 @@
             color: #000000 !important;
         }
         .product-stock-tag {
-            position: absolute;
-            bottom: 8px;
-            right: 10px;
-            font-size: 0.68rem;
+            font-size: 0.66rem;
             font-weight: 700;
-            color: rgba(0,0,0,0.55);
+            color: rgba(0,0,0,0.6);
+            background: rgba(0,0,0,0.08);
+            padding: 2px 7px;
+            border-radius: 8px;
+            white-space: nowrap;
         }
-        .product-stock-tag.tag-low { color: var(--warning-color); }
-        .product-stock-tag.tag-out { color: var(--danger-color); }
+        .product-stock-tag.tag-low { color: #ffffff; background: var(--warning-color); }
+        .product-stock-tag.tag-out { color: #ffffff; background: var(--danger-color); }
 
         /* BOTÓN FLOTANTE DEL CARRITO DE COMPRAS */
         .floating-cart-btn {
