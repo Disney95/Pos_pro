@@ -150,7 +150,7 @@
     <header>
         <div>
             <h2>POS Professional</h2>
-            <span class="app-version" id="appVersionLabel">v1.3.0</span>
+            <span class="app-version" id="appVersionLabel">v1.5.0</span>
         </div>
         <div style="display:flex; align-items:center; gap:8px;">
             <div class="user-chip" id="userChip">—</div>
@@ -189,7 +189,7 @@
             <div class="search-row">
                 <input type="text" id="productSearch" placeholder="Buscar producto..." oninput="renderPOS()">
                 <input type="text" id="barcodeInput" placeholder="Escanear código (USB)..." onkeydown="if(event.key==='Enter'){handleBarcodeInput(this.value); this.value='';}" style="max-width:150px;">
-                <button class="btn-icon-scan" title="Escanear con cámara" onclick="openCameraScanner()">📷</button>
+                <button class="btn-icon-scan" title="Escanear con cámara" onclick="openCameraScanner()"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg></button>
             </div>
             <div class="category-tabs" id="categoryTabs"></div>
         </div>
