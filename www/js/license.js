@@ -18,18 +18,6 @@
 // basado en localStorage (menos robusto, pero funcional).
 //
 // IMPORTANTE: la clave PRIVADA nunca debe estar en este archivo ni en la app. Solo la pública.
-//
-// ---- BUILD "ACTUALIZACIÓN LIMPIA" (sin trial ni código de activación) ----
-// Este build tiene SKIP_LICENSE_CHECK = true: la app se auto-activa al abrir, sin mostrar
-// nunca la pantalla de bloqueo ni pedir código. Está pensado para actualizar a clientes que
-// YA tienen la app instalada de antes (sin protección) y ya la usan con normalidad — no
-// tiene sentido interrumpirlos con un trial o pedirles que activen algo que ya estaban
-// usando gratis. Toda la infraestructura de seguridad (plugin nativo, verificación de
-// firma, etc.) sigue en el código, simplemente inactiva: si en algún momento quieres exigir
-// activación también a estos clientes, basta con cambiar SKIP_LICENSE_CHECK a false y
-// recompilar. La versión que SÍ pide activación (para vender a clientes nuevos) es un build
-// aparte, con SKIP_LICENSE_CHECK = false.
-const SKIP_LICENSE_CHECK = true;
 
 const TRIAL_DAYS = 3;
 const TRIAL_INSTALL_KEY = 'trialInstallAt';
@@ -202,10 +190,13 @@ function showTrialBanner(daysRemaining) {
     if (!banner) {
         banner = document.createElement('div');
         banner.id = 'trialBanner';
-        banner.style.cssText = 'position:fixed;top:0;left:0;width:100%;padding:6px 10px;' +
+        banner.style.cssText = 'position:fixed;left:0;width:100%;padding:6px 10px;' +
             'background:#333;color:#fff;font-size:0.72rem;text-align:center;z-index:400;opacity:0.9;';
         document.body.appendChild(banner);
     }
+    // Se ubica justo encima de la barra inferior de navegación (Venta, Inventario, etc.)
+    const nav = document.getElementById('mainNav');
+    banner.style.bottom = (nav ? nav.offsetHeight : 50) + 'px';
     const text = daysRemaining <= 1
         ? 'Versión de prueba: último día'
         : `Versión de prueba: ${daysRemaining} días restantes`;
@@ -268,16 +259,6 @@ async function activateLicense() {
 // ---- Punto de entrada: se ejecuta al cargar la app ----
 async function checkLicenseOnStartup() {
     const deviceId = await getDeviceId();
-
-    // Build de "actualización limpia": se auto-activa en silencio, sin trial ni pantalla
-    // de bloqueo. Ver el comentario junto a SKIP_LICENSE_CHECK más arriba.
-    if (SKIP_LICENSE_CHECK) {
-        if (!getStoredActivation()) {
-            saveActivation(deviceId, {});
-        }
-        return;
-    }
-
     const activation = getStoredActivation();
 
     // Ya activada en este dispositivo: no se vuelve a pedir nada.

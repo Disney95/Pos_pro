@@ -30,7 +30,7 @@
         let systemThemeListenerAdded = false;
         let turnNumberMode = localStorage.getItem('turnNumberMode') || 'manual';
         let paymentsLog = JSON.parse(localStorage.getItem('paymentsLog')) || [];
-        const APP_VERSION = '1.4.0'; // Debe coincidir con "version" en package.json
+        const APP_VERSION = '1.5.0'; // Debe coincidir con "version" en package.json
 
         // Paleta propia de 12 tonos suaves (ni chillones ni apagados) para las tarjetas de producto
         const PRODUCT_COLOR_PALETTE = [
@@ -169,6 +169,45 @@
             renderAll();
         }
 
+        // ============ DESLIZAR (SWIPE) PARA CAMBIAR ENTRE VENTA / INVENTARIO / CAJA / REPORTES / AJUSTES ============
+        function isAnyModalOpen() {
+            return !!document.querySelector('.checkout-modal.active, .generic-modal.active, .login-overlay.active, .scanner-modal.active');
+        }
+        function setupSwipeNavigation() {
+            let touchStartX = 0, touchStartY = 0, swipeStartValid = false;
+            document.addEventListener('touchstart', (e) => {
+                if (e.touches.length !== 1) { swipeStartValid = false; return; }
+                // No interferir con el desplazamiento horizontal propio de las categorías
+                if (e.target.closest('.category-tabs') || e.target.closest('nav') || isAnyModalOpen()) {
+                    swipeStartValid = false;
+                    return;
+                }
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                swipeStartValid = true;
+            }, { passive: true });
+
+            document.addEventListener('touchend', (e) => {
+                if (!swipeStartValid) return;
+                swipeStartValid = false;
+                const touch = e.changedTouches[0];
+                const dx = touch.clientX - touchStartX;
+                const dy = touch.clientY - touchStartY;
+                const minSwipeDistance = 70;
+                // Solo se considera swipe horizontal si el movimiento horizontal
+                // es claramente mayor que el vertical (para no chocar con el scroll normal).
+                if (Math.abs(dx) < minSwipeDistance || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+
+                const tabs = Array.from(document.querySelectorAll('.nav-tab-btn'));
+                const currentIndex = tabs.findIndex(t => t.classList.contains('active'));
+                if (currentIndex === -1) return;
+                let nextIndex = currentIndex + (dx < 0 ? 1 : -1);
+                if (nextIndex < 0 || nextIndex >= tabs.length) return;
+                const nextBtn = tabs[nextIndex];
+                switchTab(nextBtn.dataset.view, nextBtn);
+            }, { passive: true });
+        }
+
         // ============ SONIDO DE CONFIRMACIÓN ============
         function playBeep(freq = 880, duration = 90) {
             try {
@@ -279,9 +318,11 @@
                         <div>
                             <div class="product-category-label">${p.category || ''}</div>
                             <div class="product-title">${p.name}</div>
-                            <div class="product-price">${formatMoney(p.price)}</div>
                         </div>
-                        <div class="product-stock-tag ${tagClass}">Disp: ${availableStock}</div>
+                        <div class="product-bottom-row">
+                            <div class="product-price">${formatMoney(p.price)}</div>
+                            <div class="product-stock-tag ${tagClass}">Disp: ${availableStock}</div>
+                        </div>
                     </div>
                 `;
             }).join('');
@@ -574,7 +615,7 @@
                                 <label>Código de Barras</label>
                                 <div style="display:flex; gap:8px;">
                                     <input type="text" id="prod-barcode" placeholder="Opcional" style="flex:1;">
-                                    <button type="button" class="btn-icon-scan" title="Escanear con cámara" onclick="openCameraScanner((code) => { document.getElementById('prod-barcode').value = code; })">📷</button>
+                                    <button type="button" class="btn-icon-scan" title="Escanear con cámara" onclick="openCameraScanner((code) => { document.getElementById('prod-barcode').value = code; })"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg></button>
                                 </div>
                             </div>
                             <div class="form-group">
@@ -1021,6 +1062,20 @@
                 effective = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
             }
             document.body.classList.toggle('dark-theme', effective === 'dark');
+            // Barra de estado de Android: blanca con íconos oscuros en tema claro,
+            // negra con íconos claros en tema oscuro (solo dentro de la app instalada).
+            try {
+                const StatusBar = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar;
+                if (StatusBar) {
+                    if (effective === 'dark') {
+                        StatusBar.setBackgroundColor({ color: '#000000' });
+                        StatusBar.setStyle({ style: 'LIGHT' }); // íconos claros sobre fondo oscuro
+                    } else {
+                        StatusBar.setBackgroundColor({ color: '#ffffff' });
+                        StatusBar.setStyle({ style: 'DARK' }); // íconos oscuros sobre fondo blanco
+                    }
+                }
+            } catch (e) { /* plugin no disponible (ej. corriendo en navegador) */ }
         }
         function toggleTheme(theme) {
             localStorage.setItem('themePref', theme);
@@ -1191,6 +1246,7 @@
             }
             renderAll();
             setupAndroidBackButton();
+            setupSwipeNavigation();
         })();
 
         // ============ BOTÓN/GESTO "ATRÁS" DE ANDROID (INTELIGENTE) ============
