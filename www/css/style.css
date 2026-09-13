@@ -60,6 +60,8 @@
 
         #offline-banner { display: none; background: var(--warning-color); color: white; text-align: center; padding: 6px; font-size: 0.8rem; font-weight: bold; flex-shrink: 0; }
         #offline-banner.show { display: block; }
+        #update-banner { display: none; background: var(--accent-color); color: white; text-align: center; padding: 6px; font-size: 0.8rem; font-weight: bold; flex-shrink: 0; cursor: pointer; }
+        #update-banner.show { display: block; }
 
         .view-section { display: none; flex: 1; overflow: auto; padding: 14px; position: relative; }
         .view-section.active { display: flex; }
