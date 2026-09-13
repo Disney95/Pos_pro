@@ -1069,10 +1069,10 @@
                 if (StatusBar) {
                     if (effective === 'dark') {
                         StatusBar.setBackgroundColor({ color: '#000000' });
-                        StatusBar.setStyle({ style: 'LIGHT' }); // íconos claros sobre fondo oscuro
+                        StatusBar.setStyle({ style: 'DARK' }); // Style.Dark = íconos claros, para fondo oscuro
                     } else {
                         StatusBar.setBackgroundColor({ color: '#ffffff' });
-                        StatusBar.setStyle({ style: 'DARK' }); // íconos oscuros sobre fondo blanco
+                        StatusBar.setStyle({ style: 'LIGHT' }); // Style.Light = íconos oscuros, para fondo blanco
                     }
                 }
             } catch (e) { /* plugin no disponible (ej. corriendo en navegador) */ }
