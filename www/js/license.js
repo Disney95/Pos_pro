@@ -19,6 +19,15 @@
 //
 // IMPORTANTE: la clave PRIVADA nunca debe estar en este archivo ni en la app. Solo la pública.
 
+// ==================== INTERRUPTOR PRINCIPAL ====================
+// false = VERSIÓN COMPLETA: no se pide código, no hay límite de días,
+//         no se bloquea ninguna función (isDemoLocked() siempre false).
+// true  = reactiva el sistema de prueba de 3 días + bloqueo por licencia
+//         (el comportamiento original, sin cambios).
+// Todo el código de abajo queda intacto para poder reactivarlo cuando
+// se quiera simplemente cambiando este valor a `true`.
+const LICENSE_SYSTEM_ENABLED = false;
+
 const TRIAL_DAYS = 3;
 const TRIAL_INSTALL_KEY = 'trialInstallAt';
 const TRIAL_LAST_SEEN_KEY = 'trialLastSeenAt';
@@ -144,6 +153,7 @@ function saveActivation(deviceId, payload) {
 // El bloqueo real de seguridad (con verificación de firma y deviceId) lo hace
 // checkLicenseOnStartup() más arriba; esto es únicamente para la experiencia del usuario.
 function isDemoLocked() {
+    if (!LICENSE_SYSTEM_ENABLED) return false;
     try {
         return !localStorage.getItem(LICENSE_ACTIVATED_KEY);
     } catch (e) {
@@ -258,6 +268,8 @@ async function activateLicense() {
 
 // ---- Punto de entrada: se ejecuta al cargar la app ----
 async function checkLicenseOnStartup() {
+    if (!LICENSE_SYSTEM_ENABLED) return; // versión completa: no se pide nada al iniciar
+
     const deviceId = await getDeviceId();
     const activation = getStoredActivation();
 
