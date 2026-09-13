@@ -291,6 +291,13 @@
             opacity: 0.55;
             position: relative;
         }
+        /* El botón de historial de pagos debe conservar su posición fija
+           (arriba a la derecha) aunque se le agregue la clase demo-locked;
+           si no, .demo-locked le pisa el position:absolute de arriba y el
+           ícono termina flotando arriba a la izquierda. */
+        .payments-history-btn.demo-locked {
+            position: absolute;
+        }
         .demo-locked::after {
             content: "🔒";
             position: absolute;
