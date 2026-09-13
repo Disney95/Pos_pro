@@ -1207,6 +1207,36 @@
         window.addEventListener('online', () => { updateOfflineBanner(); trySyncPending(); });
         window.addEventListener('offline', updateOfflineBanner);
 
+        // ============ VERIFICACIÓN DE ACTUALIZACIÓN (GitHub Releases) ============
+        // Compara el número de build de este APK (window.APP_BUILD_NUMBER, escrito
+        // por el workflow en cada compilación) contra el último Release publicado
+        // en GitHub. Si hay una versión más nueva, muestra un aviso con el enlace
+        // de descarga directa del APK. No bloquea nada si falla (sin conexión, etc.).
+        const GITHUB_REPO = 'Disney95/Pos_pro';
+        let latestApkUrl = null;
+
+        async function checkForUpdate() {
+            try {
+                const resp = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
+                if (!resp.ok) return;
+                const data = await resp.json();
+                const match = /-(\d+)$/.exec(data.tag_name || '');
+                if (!match) return;
+                const latestBuild = parseInt(match[1], 10);
+                const currentBuild = window.APP_BUILD_NUMBER || 0;
+                if (latestBuild > currentBuild) {
+                    const asset = (data.assets || []).find(a => a.name.endsWith('.apk'));
+                    latestApkUrl = asset ? asset.browser_download_url : data.html_url;
+                    const banner = document.getElementById('update-banner');
+                    banner.innerText = `⬆ Nueva versión disponible (${data.name || data.tag_name}) — toca para descargar`;
+                    banner.classList.add('show');
+                }
+            } catch (e) { /* sin conexión o API no disponible: se ignora en silencio */ }
+        }
+        function openUpdateLink() {
+            if (latestApkUrl) window.open(latestApkUrl, '_blank');
+        }
+
         // ============ PERSISTENCIA LOCAL ============
         function saveData() {
             localStorage.setItem('products', JSON.stringify(products));
@@ -1247,6 +1277,7 @@
             renderAll();
             setupAndroidBackButton();
             setupSwipeNavigation();
+            checkForUpdate();
         })();
 
         // ============ BOTÓN/GESTO "ATRÁS" DE ANDROID (INTELIGENTE) ============
